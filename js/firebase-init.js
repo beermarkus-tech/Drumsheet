@@ -10,12 +10,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 
 const firebaseConfig = {
-  apiKey: 'REPLACE_ME',
-  authDomain: 'REPLACE_ME.firebaseapp.com',
-  projectId: 'REPLACE_ME',
-  storageBucket: 'REPLACE_ME.appspot.com',
-  messagingSenderId: 'REPLACE_ME',
-  appId: 'REPLACE_ME'
+  apiKey: 'AIzaSyAQT8HXa0Acc34m_9H_QXiNhOttQyds0Kc',
+  authDomain: 'drumsheet-cc676.firebaseapp.com',
+  projectId: 'drumsheet-cc676',
+  storageBucket: 'drumsheet-cc676.firebasestorage.app',
+  messagingSenderId: '490664045380',
+  appId: '1:490664045380:web:09bea719ae5f4c58ea4511'
 };
 
 // If you're reusing an existing Firebase project and added DrumScribe as a second,
