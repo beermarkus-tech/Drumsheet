@@ -1,0 +1,8 @@
+{
+  "name": "drumsheet-migration-scripts",
+  "private": true,
+  "description": "One-time migration tooling, not part of the deployed PWA.",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

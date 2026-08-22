@@ -1,0 +1,210 @@
+/* --- VARIABLES --- */
+:root {
+    --primary: #2c3e50;
+    --accent: #3498db;
+    --border: #bdc3c7;
+    --danger: #e74c3c;
+    --cell-width: 24px; /* Base width for a single 16th note */
+}
+
+/* --- GLOBAL RESET --- */
+* { box-sizing: border-box; }
+
+/* --- BASE LAYOUT --- */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 0;
+    background: #f4f4f9;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+}
+
+/* Nav & Info Bar */
+.app-header { background: var(--primary); color: white; padding: 10px 20px; height: 40px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.nav-bar { background: white; padding: 8px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: center; gap: 10px; flex-shrink: 0; }
+.song-info-bar { background: #eee; padding: 5px 20px; border-bottom: 1px solid #ddd; display: flex; gap: 20px; flex-shrink: 0; align-items: center; }
+
+/* Global Elements */
+button { background: white; border: 1px solid var(--border); padding: 5px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+button:hover { background: #f0f0f0; }
+/* Note: Specific input styling is handled per section to avoid conflicts */
+
+/* --- EDITOR LAYOUT --- */
+#editor-view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+
+/* 1. HEADER */
+.editor-header {
+  display: flex; align-items: stretch;
+  background: var(--primary); color: white; font-weight: bold;
+  height: 40px; flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  padding-right: 17px; /* Scrollbar compensation */
+}
+
+/* 2. ROWS CONTAINER */
+.editor-container { flex: 1; overflow-y: scroll; display: flex; flex-direction: column; }
+.editor-row {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid #ddd; background: white;
+  height: 30px; min-height: 30px; flex-shrink: 0;
+}
+
+/* --- COLUMNS CONFIGURATION --- */
+
+/* COL 1: STRUCTURE (Fixed) */
+.col-struct {
+  width: 110px; flex: 0 0 110px;
+  border-right: 1px solid #ccc; padding: 0 5px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* COL 2: LYRICS (Fluid) */
+.col-lyrics {
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid #ccc; padding: 0 5px;
+  display: flex; align-items: center;
+  overflow: hidden;
+}
+
+/* COL 3: GRID (Auto - Shrinks/Grows based on cell count) */
+.col-grid {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: fit-content;
+  border-right: 1px solid #ccc;
+  background: #fff;
+  z-index: 2;
+}
+
+/* COL 4: TOOLS */
+.col-tools {
+  width: 50px; flex: 0 0 50px;
+  border-left: 1px solid #ccc;
+  display: flex; align-items: center; justify-content: center; gap: 2px;
+  background: #f9f9f9;
+}
+
+/* --- TOOL ICONS --- */
+/* Default state: Light Grey */
+.action-icon {
+  cursor: pointer;
+  font-size: 20px;
+  color: #ccc;  /* Light Grey */
+  transition: color 0.2s;
+}
+
+/* Hover states: Color up when interacted with */
+.action-icon.add:hover { color: var(--accent); } /* Blue on hover */
+.action-icon.del:hover { color: var(--danger); } /* Red on hover */
+
+/* --- INTERNAL ELEMENTS --- */
+.struct-select { width: 100%; border: none; font-weight: bold; text-align: center; cursor: pointer; background-color: white; color: inherit; }
+.lyrics-input { width: 100%; border: none; outline: none; background: transparent; padding: 5px; }
+
+/* --- GRID CELL STYLING --- */
+
+.bar-container {
+  display: flex;
+  border-left: 2px solid #000;
+  border-right: 2px solid #000;
+  margin-right: -2px;
+  position: relative;
+  z-index: 1;
+}
+
+.grid-cell, .beat-num {
+  display: flex; justify-content: center; align-items: center;
+  font-weight: bold; font-size: 0.9rem;
+  cursor: pointer; user-select: none;
+
+  /* Default: Light Grey Border (for 16th notes and off-beat 8ths) */
+  border-right: 1px solid #eee;
+
+  width: calc(var(--cell-width) * var(--slots, 1));
+  flex: 0 0 calc(var(--cell-width) * var(--slots, 1));
+}
+
+/* BEAT BORDER (Quarter Note Boundaries) */
+/* Applied via JS to cells ending on 4, 8, 12 */
+.grid-cell.border-dark {
+    border-right: 1px solid #999; /* Darker Grey */
+}
+
+.grid-cell:hover { background-color: #f0f0f0; }
+
+/* Header Specifics */
+.beat-numbers { display: flex; background: #34495e; font-size: 0.7rem; align-items: center; height: 100%; }
+.beat-num { --slots: 1; border-right: 1px solid rgba(255,255,255,0.1); }
+/* Visual Trick: Make beat numbers 1, 2, 3, 4 have a distinct right border in header too */
+.beat-num:nth-child(4n) { border-right: 1px solid rgba(255,255,255,0.3); }
+
+.bar-header { display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.3); }
+
+/* --- TOGGLE LOGIC --- */
+body.hide-16th .beat-num:nth-child(even) { display: none !important; }
+body.hide-16th .bar-container[data-subd="16"] .grid-cell:nth-child(even) { display: none !important; }
+body.hide-16th .bar-container:not([data-subd="16"]) .grid-cell {
+    width: calc((var(--cell-width) * var(--slots)) / 2);
+    flex: 0 0 calc((var(--cell-width) * var(--slots)) / 2);
+}
+
+/* --- POPUP (Phase 4) --- */
+#cellPopup { position: fixed; z-index: 3000; background: white; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); padding: 15px; display: none; flex-direction: column; gap: 12px; width: 280px; }
+.popup-section-title { font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 5px; font-weight: bold; letter-spacing: 0.5px; }
+.symbol-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 4px; border-radius: 4px; }
+.symbol-row { display: flex; align-items: center; gap: 10px; padding: 4px; cursor: pointer; border-radius: 4px; transition: background 0.1s; }
+.symbol-row:hover { background: #f5f5f5; }
+.symbol-preview { width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold; border: 1px solid #ddd; border-radius: 3px; font-size: 0.8rem; }
+.symbol-meaning { font-size: 0.9rem; color: #333; }
+.subd-row { display: flex; gap: 5px; }
+.subd-btn { flex: 1; padding: 5px; font-size: 0.75rem; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: #fff; }
+.subd-btn:hover { background: #f0f0f0; }
+.subd-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.cell-comment-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; box-sizing: border-box; }
+.popup-actions { display: flex; gap: 8px; margin-top: 5px; }
+.popup-btn { flex: 1; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; border-radius: 4px; font-size: 0.85rem; text-align: center; transition: background 0.2s; }
+.popup-btn:hover { background: #eee; }
+
+/* --- MODALS (Phase 2 Restored) --- */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000; }
+.modal { background: white; width: 600px; max-width: 90%; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; }
+.modal-header { padding: 15px; border-bottom: 1px solid var(--border); font-weight: bold; font-size: 1.1rem; background: #fff; }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: #f9f9f9; }
+
+/* RESTORED: Input Styling for Modals */
+.config-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+.config-row input, .config-row select { padding: 8px; border: 1px solid var(--border); border-radius: 4px; flex: 1; }
+
+.tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 10px; }
+.tab { padding: 10px; cursor: pointer; } .tab.active { border-bottom: 2px solid var(--accent); color: var(--accent); }
+.tab-content { display: none; } .tab-content.active { display: block; }
+
+/* RESTORED: Load Table Styling */
+table.song-list { width: 100%; border-collapse: collapse; }
+table.song-list th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; cursor: pointer; }
+table.song-list td { padding: 10px; border-bottom: 1px solid #eee; }
+table.song-list tr:hover { background: #f9f9f9; cursor: pointer; }
+
+select.color-select { font-weight: bold; color: #333; }
+select.color-select option { font-weight: normal; }
+
+/* --- HEADER FIXES --- */
+
+/* 1. Fix White-on-White: Force Header Grid to be transparent */
+.editor-header .col-grid {
+    background: transparent !important;
+    color: white !important;
+}
+
+/* 2. Fix Text Size: Ensure Bar Labels match Beat Numbers exactly */
+.bar-label {
+    text-align: center;
+    padding: 2px;
+    font-size: 0.9rem; /* Matches standard beat size */
+    font-weight: bold;
+    letter-spacing: 1px;
+}

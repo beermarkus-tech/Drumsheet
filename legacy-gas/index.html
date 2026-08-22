@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <?!= include('css'); ?>
+</head>
+<body>
+
+  <div class="app-header">
+    <div class="app-title">DrumScribe</div>
+    <div class="app-version">V1.0</div>
+  </div>
+
+  <div class="nav-bar">
+    <button onclick="openNewSongModal()"><span class="material-icons">add</span> New Song</button>
+    <button onclick="openLoadSongModal()"><span class="material-icons">folder_open</span> Load Song</button>
+    <button onclick="printSheet()">
+      <span class="material-icons">print</span> Print Sheet
+    </button>
+    <button onclick="openConfigModal()"><span class="material-icons">settings</span> Configure</button>
+    <button id="btn-toggle-16" onclick="toggle16thView()">
+        <span class="material-icons">grid_on</span> 
+        <span>Hide 16th</span>
+    </button>
+    <button id="saveSongBtn" onclick="saveCurrentSong()" style="margin-left:auto; display:none;" class="primary"><span class="material-icons">save</span> Save Song</button>
+  </div>
+
+  <div id="editor-view">
+    <div class="song-info-bar" style="align-items: center; gap: 10px;">
+      <label style="font-weight:bold;">Title:</label>
+      <input id="disp-title" type="text" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px; width: 150px;">
+      
+      <label style="font-weight:bold; margin-left:10px;">Band:</label>
+      <input id="disp-band" type="text" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px; width: 150px;">
+      
+      <label style="font-weight:bold; margin-left:10px;">BPM:</label>
+      <input id="disp-bpm" type="number" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px; width: 60px;">
+      
+      <button id="btn-update-meta" onclick="saveSongMetadata()" style="margin-left:auto; padding: 4px 10px; font-size: 0.8rem;">
+        <span class="material-icons" style="font-size: 14px;">check</span> Update Info
+      </button>
+    </div>
+    
+    <div class="editor-header">
+      
+      <div class="col-struct" style="border-right: 1px solid rgba(255,255,255,0.2);">Structure</div>
+      
+      <div class="col-lyrics" style="justify-content:center;">Lyrics</div>
+      
+      <div class="col-grid">
+        <div class="bar-header">
+          <div class="bar-label">Bar 1</div>
+          <div class="beat-numbers" id="header-beats-1"></div>
+        </div>
+        <div class="bar-header">
+          <div class="bar-label">Bar 2</div>
+          <div class="beat-numbers" id="header-beats-2"></div>
+        </div>
+      </div>
+      
+      <div class="col-tools" style="background:var(--primary); border:none;"></div>
+    </div>
+
+    <div id="rows-container" class="editor-container"></div>
+    
+    <div style="padding: 10px 20px; background: #f9f9f9; border-top: 1px solid #ddd;">
+       <button onclick="addEditorRow()" style="width:100%; justify-content:center;">+ Add Line</button>
+    </div>
+  </div>
+
+  <div id="configModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">Configuration</div>
+      
+      <div class="modal-body">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('tab-struct')">Structure</div>
+          <div class="tab" onclick="switchTab('tab-sym')">Symbols</div>
+        </div>
+
+        <div id="tab-struct" class="tab-content active">
+          <div id="structure-list"></div>
+          <button onclick="addStructureRow()" style="margin-top:10px">+ Add Structure</button>
+        </div>
+
+        <div id="tab-sym" class="tab-content">
+          <div id="symbol-list"></div>
+          <button onclick="addSymbolRow()" style="margin-top:10px">+ Add Symbol</button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button onclick="closeModal('configModal')">Close</button>
+        <button class="primary" onclick="saveConfiguration()">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="newSongModal" class="modal-overlay">
+    <div class="modal" style="width: 400px;">
+      <div class="modal-header">Create New Song</div>
+      <div class="modal-body">
+        <div class="config-row"><input id="new-title" type="text" placeholder="Song Title"></div>
+        <div class="config-row"><input id="new-band" type="text" placeholder="Band Name"></div>
+        <div class="config-row">
+          <input id="new-bpm" type="number" placeholder="BPM">
+          <select id="new-beat"><option value="4/4">4/4</option></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeModal('newSongModal')">Cancel</button>
+        <button class="primary" onclick="createNewSong()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadSongModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">Load Song</div>
+      <div class="modal-body">
+        <table class="song-list">
+          <thead>
+            <tr>
+              <th onclick="sortSongList('band')">Band Name <span class="material-icons" style="font-size:12px">sort</span></th>
+              <th onclick="sortSongList('title')">Song Title <span class="material-icons" style="font-size:12px">sort</span></th>
+            </tr>
+          </thead>
+          <tbody id="song-list-body"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeModal('loadSongModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cellPopup" style="display:none;">
+    
+    <div class="popup-section-title">Cell Text</div>
+    <input id="popup-comment" class="cell-comment-input" placeholder="Type & Enter..." onkeydown="if(event.key === 'Enter') applyText()">
+    
+    <div class="popup-section-title" style="margin-top:10px;">Insert Symbol</div>
+    <div id="popup-symbols" class="symbol-list"></div>
+    
+    <div class="popup-section-title" style="margin-top:10px;">Bar Subdivision</div>
+    <div class="subd-row">
+      <div class="subd-btn" data-val="16" onclick="changeSubdivision(16)">1/16</div>
+      <div class="subd-btn" data-val="8" onclick="changeSubdivision(8)">1/8</div>
+      <div class="subd-btn" data-val="4" onclick="changeSubdivision(4)">1/4</div>
+      <div class="subd-btn" data-val="2" onclick="changeSubdivision(2)">1/2</div>
+      <div class="subd-btn" data-val="1" onclick="changeSubdivision(1)">Full</div>
+    </div>
+
+    <div style="border-top:1px solid #eee; margin:10px 0;"></div>
+    
+    <div class="popup-actions">
+      <button class="popup-btn" onclick="copyBar()">Copy Bar</button>
+      <button class="popup-btn" onclick="pasteBar()">Paste Bar</button>
+    </div>
+
+    <div class="popup-actions">
+      <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearCell()">Clear Cell</button>
+    </div>
+  </div>
+
+  <?!= include('js-main'); ?>
+  <?!= include('js-grid'); ?>
+  <?!= include('js-data'); ?>
+  <?!= include('js-print'); ?>
+
+</body>
+</html>

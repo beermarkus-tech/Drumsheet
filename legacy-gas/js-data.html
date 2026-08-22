@@ -1,0 +1,150 @@
+<script>
+  function saveConfiguration() {
+    const btn = document.querySelector('#configModal .modal-footer .primary');
+    const originalText = btn.innerText;
+    btn.innerText = 'Saving...';
+    google.script.run.withSuccessHandler(() => {
+      btn.innerText = 'Saved!';
+      setTimeout(() => { closeModal('configModal'); btn.innerText = originalText; }, 500);
+    }).saveConfig(configData);
+  }
+
+  function createNewSong() {
+    const meta = {
+      title: document.getElementById('new-title').value,
+      band: document.getElementById('new-band').value,
+      bpm: document.getElementById('new-bpm').value,
+      beat: '4/4'
+    };
+    if(!meta.title) return alert('Title is required');
+
+    google.script.run.withSuccessHandler(data => {
+      closeModal('newSongModal');
+      loadEditor(data);
+    }).createNewSong(meta);
+  }
+
+  function getSongList() { /* Helper if needed locally */ }
+  
+  function loadSongList() {
+    const tbody = document.getElementById('song-list-body');
+    tbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+    google.script.run.withSuccessHandler(list => {
+      songListCache = list;
+      tbody.innerHTML = '';
+      list.forEach(song => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${song.band}</td><td>${song.title}</td>`;
+        tr.onclick = () => loadSelectedSong(song.title);
+        tbody.appendChild(tr);
+      });
+    }).getSongList();
+  }
+  
+  function sortSongList(field) {
+     // Basic sort implementation or reloading from server
+     // For now, simple re-render if cached, or just re-fetch
+     loadSongList(); 
+  }
+
+  function loadSelectedSong(title) {
+    google.script.run.withSuccessHandler(jsonString => {
+      try {
+        const songData = JSON.parse(jsonString);
+        closeModal('loadSongModal');
+        loadEditor(songData);
+      } catch (e) { alert("Error: " + e.message); }
+    }).loadSong(title);
+  }
+
+  function loadEditor(songData) {
+    if (!songData) return;
+    currentSongMeta = songData.meta;
+    
+    // UPDATED: Populate Inputs instead of Spans
+    document.getElementById('disp-title').value = songData.meta.title;
+    document.getElementById('disp-band').value = songData.meta.band;
+    document.getElementById('disp-bpm').value = songData.meta.bpm;
+    
+    document.getElementById('editor-view').style.display = 'flex';
+    document.getElementById('saveSongBtn').style.display = 'flex';
+    
+    const container = document.getElementById('rows-container');
+    container.innerHTML = '';
+    
+    if (songData.rows && songData.rows.length > 0) {
+      for (const row of songData.rows) window.addEditorRow(row);
+    } else {
+      window.addEditorRow();
+    }
+  }
+
+  function saveCurrentSong() {
+    const rows = [];
+    document.querySelectorAll('.editor-row').forEach(row => {
+        const gridData = {};
+        
+        // 1. Scrape Cells
+        row.querySelectorAll('.grid-cell').forEach(cell => {
+            if(cell.innerText || cell.style.backgroundColor) {
+                gridData[cell.id] = { sym: cell.innerText, color: cell.style.backgroundColor };
+            }
+        });
+
+        // 2. Scrape Subdivision State (New Phase 4)
+        const bar1 = row.querySelector('#bar-1');
+        const bar2 = row.querySelector('#bar-2');
+        if(bar1) gridData['bar1_subd'] = bar1.getAttribute('data-subd');
+        if(bar2) gridData['bar2_subd'] = bar2.getAttribute('data-subd');
+
+        rows.push({
+            structure: row.querySelector('.struct-select').value,
+            lyrics: row.querySelector('.lyrics-input').value,
+            gridData: JSON.stringify(gridData)
+        });
+    });
+    
+    const btn = document.getElementById('saveSongBtn');
+    const originalText = btn.innerHTML;
+    btn.innerText = 'Saving...';
+    
+    google.script.run.withSuccessHandler(() => {
+        btn.innerText = 'Saved!';
+        setTimeout(() => btn.innerHTML = originalText, 1000);
+    }).saveSongContent(currentSongMeta.title, rows);
+  }
+
+  function saveSongMetadata() {
+    const newMeta = {
+      title: document.getElementById('disp-title').value,
+      band: document.getElementById('disp-band').value,
+      bpm: document.getElementById('disp-bpm').value,
+      beat: '4/4' // Preserve existing beat or read from UI if we add that input later
+    };
+    
+    if (!newMeta.title) return alert("Title cannot be empty");
+
+    const btn = document.getElementById('btn-update-meta');
+    const originalText = btn.innerHTML;
+    btn.innerText = 'Updating...';
+    btn.disabled = true;
+
+    google.script.run
+      .withSuccessHandler((savedMeta) => {
+        // Update global state with new title (crucial for future saves)
+        currentSongMeta = savedMeta;
+        
+        btn.innerHTML = '<span class="material-icons" style="font-size: 14px;">check</span> Saved';
+        setTimeout(() => { 
+          btn.innerHTML = originalText; 
+          btn.disabled = false; 
+        }, 1500);
+      })
+      .withFailureHandler((err) => {
+        alert("Error updating info: " + err.message);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      })
+      .updateSongMetadata(currentSongMeta.title, newMeta);
+  }
+</script>

@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.DS_Store
+
+# Never commit Firebase service account keys or raw data exports
+serviceAccountKey*.json
+service-account*.json
+scripts/export.json
