@@ -4,6 +4,13 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 05
+
+- Thickened the black bar-boundary lines (start of bar 1, the shared
+  junction between bar 1/2, end of bar 2) from 2px to 3px, to give clearer
+  contrast against the dark-grey quarter-note lines without having to
+  lighten those further. Header's matching divider bumped to match.
+
 ## Build 04
 
 - Correction to Build 03: the split-bar divider (the line between a split
