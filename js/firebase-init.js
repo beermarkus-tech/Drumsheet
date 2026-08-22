@@ -18,12 +18,18 @@ const firebaseConfig = {
   appId: 'REPLACE_ME'
 };
 
+// If you're reusing an existing Firebase project and added DrumScribe as a second,
+// *named* Firestore database (Firestore Database > database selector > Create
+// database) rather than a new project, put that database ID here. Leave it null
+// to use the project's "(default)" database.
+const FIRESTORE_DATABASE_ID = null;
+
 // window.firebaseReady resolves once window.Firebase is populated. The rest of the
 // app (classic, non-module scripts) awaits this before touching window.Firebase, so
 // load order between this module and the classic scripts never matters.
 window.firebaseReady = (async () => {
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  const db = FIRESTORE_DATABASE_ID ? getFirestore(app, FIRESTORE_DATABASE_ID) : getFirestore(app);
 
   const CONFIG_DOC = doc(db, 'config', 'main');
   const SONGS_COL = collection(db, 'songs');

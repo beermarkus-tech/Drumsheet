@@ -4,28 +4,34 @@
  * legacy-gas/temp-export.gs) into Firestore.
  *
  * Usage:
- *   node scripts/import-to-firebase.js path/to/export.json path/to/service-account-key.json
+ *   node scripts/import-to-firebase.js path/to/export.json path/to/service-account-key.json [databaseId]
  *
  * - export.json:            the JSON you pasted from the Sheet's "Export All Data" dialog
  * - service-account-key.json: from Firebase Console > Project settings > Service accounts
  *                             > Generate new private key. Never commit this file.
+ * - databaseId (optional):  only needed if DrumScribe uses a second, *named*
+ *                             Firestore database within an existing project (Firestore
+ *                             Database > database selector > Create database) rather
+ *                             than the project's "(default)" database. Must match the
+ *                             FIRESTORE_DATABASE_ID set in js/firebase-init.js.
  */
 const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 
-const [, , exportPath, keyPath] = process.argv;
+const [, , exportPath, keyPath, databaseId] = process.argv;
 
 if (!exportPath || !keyPath) {
-  console.error('Usage: node scripts/import-to-firebase.js <export.json> <service-account-key.json>');
+  console.error('Usage: node scripts/import-to-firebase.js <export.json> <service-account-key.json> [databaseId]');
   process.exit(1);
 }
 
 const exportData = JSON.parse(fs.readFileSync(path.resolve(exportPath), 'utf8'));
 const serviceAccount = JSON.parse(fs.readFileSync(path.resolve(keyPath), 'utf8'));
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
+const app = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
 
 async function main() {
   const { config, songs } = exportData;

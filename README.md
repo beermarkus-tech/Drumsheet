@@ -26,18 +26,34 @@ Note: a song's Firestore document ID is independent of its title (unlike the
 original, where the Sheet name *was* the song's identity, which made renaming
 a song rename the sheet). Renaming a song here just updates the `title` field.
 
-## 1. Create the Firebase project
+## 1. Set up Firestore
 
+You have two options — pick whichever fits your Firebase project limit:
+
+**Option A: new project.**
 1. Go to the [Firebase Console](https://console.firebase.google.com/) and
    create a new project (Google Analytics is not needed, you can skip it).
-2. In the project, go to **Build > Firestore Database > Create database**.
-   Choose **Start in test mode** for now (open rules) — see "Security" below.
-3. Go to **Project settings** (gear icon) > **General** > scroll to
-   **Your apps** > click the **Web** icon (`</>`) to register a new web app.
-   Give it any nickname; you don't need Firebase Hosting for this step.
-4. Firebase shows you a `firebaseConfig` object. Copy it.
-5. Paste those values into `js/firebase-init.js`, replacing the
-   `REPLACE_ME` placeholders in `firebaseConfig`.
+2. **Build > Firestore Database > Create database.** Choose **Start in test
+   mode** for now (open rules) — see "Security" below. Leave the database ID
+   as `(default)`.
+3. **Project settings** (gear icon) > **General** > scroll to **Your apps** >
+   click the **Web** icon (`</>`) to register a new web app. Give it any
+   nickname; you don't need Firebase Hosting for this step.
+4. Firebase shows you a `firebaseConfig` object — copy it into
+   `js/firebase-init.js`, replacing the `REPLACE_ME` placeholders.
+5. Leave `FIRESTORE_DATABASE_ID` in `js/firebase-init.js` as `null`.
+
+**Option B: reuse an existing project (avoids the project-count limit).**
+Firestore supports multiple databases inside one project — you don't have to
+share an existing default database with another app.
+1. In that existing project: **Firestore Database** > the database selector
+   at the top > **Create database**. Give it an ID other than `(default)`,
+   e.g. `drumscribe`. Same "test mode" choice as above.
+2. Use that project's *existing* web app config (or register a new web app
+   in it, same as step 3 above) — copy its `firebaseConfig` into
+   `js/firebase-init.js` as usual.
+3. Set `FIRESTORE_DATABASE_ID` in `js/firebase-init.js` to the database ID
+   you chose (e.g. `'drumscribe'`), not `null`.
 
 ### Security rules
 
