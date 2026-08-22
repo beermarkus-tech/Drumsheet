@@ -4,6 +4,14 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 04
+
+- Correction to Build 03: the split-bar divider (the line between a split
+  bar's main/aux lanes, i.e. its horizontal "subdivision") is light grey
+  again, matching the 16th-note ("e"/"&"/"a") tint — it had incorrectly
+  been set to the same dark grey as the row divider. The row-separator
+  line under each editor row stays dark grey, unchanged.
+
 ## Build 03
 
 - Grid lines are now a distinguishable three-tier system, driven by CSS

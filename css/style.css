@@ -314,7 +314,7 @@ select.color-select option { font-weight: normal; }
 
 /* Border between top and bottom sub-lines */
 .sub-line.upper {
-    border-bottom: 1px solid var(--line-dark);
+    border-bottom: 1px solid var(--line-light);
 }
 
 /* Adjust cell borders in split mode to match standard look */
