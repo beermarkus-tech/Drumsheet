@@ -55,50 +55,99 @@
   // --- BAR GENERATION (Variable Width Logic) ---
   window.generateBarHTML = function(barNum, gridObj) {
     const subdKey = `bar${barNum}_subd`;
+    const splitKey = `bar${barNum}_split`;
+    const repeatKey = `bar${barNum}_repeat`; // <--- NEW KEY
+    
     let subd = parseInt(gridObj[subdKey]); 
-    if(![1, 2, 4, 8, 16].includes(subd)) subd = 16; 
-
+    if(![1, 2, 4, 8, 16].includes(subd)) subd = 8; 
+    
+    const isSplit = gridObj[splitKey] === 'true' || gridObj[splitKey] === true;
+    const isRepeat = gridObj[repeatKey] === 'true' || gridObj[repeatKey] === true; // <--- NEW FLAG
+    
     const slots = 16 / subd; 
     
-    let cellsHtml = '';
-    
-    for(let i=1; i<=16; i+=slots) {
-        const cellId = `b${barNum}_c${i}`;
-        const cellData = gridObj[cellId] || { sym: '', color: '', text: '' };
-        
-        // --- BORDER LOGIC ---
-        // Calculate where this cell ends (1-16)
-        const endSlot = i + slots - 1;
-        
-        // Determine classes
-        let cssClass = 'grid-cell';
-        
-        // If it ends on a beat (4, 8, 12) but is NOT the end of the bar (16)
-        // (End of bar is handled by the container's black border)
-        if (endSlot % 4 === 0 && endSlot < 16) {
-            cssClass += ' border-dark';
+    // Helper to generate a strip of cells
+    function generateStrip(prefix, extraClass = '') {
+        let html = '';
+        for(let i=1; i<=16; i+=slots) {
+            const cellId = prefix + `b${barNum}_c${i}`;
+            const cellData = gridObj[cellId] || { sym: '', color: '', text: '' };
+            const endSlot = i + slots - 1;
+            let cssClass = `grid-cell ${extraClass}`;
+            if (endSlot % 4 === 0 && endSlot < 16) cssClass += ' border-dark';
+            
+            let style = `--slots:${slots};`;
+            if (cellData.color) style += ` background-color:${cellData.color};`;
+            
+            let content = cellData.sym || cellData.text || '';
+            html += `<div class="${cssClass}" id="${cellId}" style="${style}" onclick="onCellClick(event, this)">${content}</div>`;
         }
-        
-        let style = `--slots:${slots};`;
-        if (cellData.color) style += ` background-color:${cellData.color};`;
-        
-        let content = cellData.sym || cellData.text || '';
-
-        cellsHtml += `<div class="${cssClass}" id="${cellId}" style="${style}" onclick="onCellClick(event, this)">${content}</div>`;
+        return html;
     }
 
+    let innerHTML = '';
+    if (isSplit) {
+        innerHTML = `
+            <div class="sub-line upper">${generateStrip('')}</div>
+            <div class="sub-line lower">${generateStrip('aux_')}</div>
+        `;
+    } else {
+        innerHTML = generateStrip('');
+    }
+
+    // Apply 'repeat-mode' class if isRepeat is true
     return `
-    <div class="bar-container" id="bar-${barNum}" data-subd="${subd}">
-        ${cellsHtml}
+    <div class="bar-container ${isSplit ? 'split-mode' : ''} ${isRepeat ? 'repeat-mode' : ''}" 
+         id="bar-${barNum}" 
+         data-subd="${subd}" 
+         data-split="${isSplit}"
+         data-repeat="${isRepeat}">  ${innerHTML}
     </div>`;
+  };
+
+  window.toggleSplit = function() {
+    if(!activeCell) return;
+    const bar = activeCell.closest('.bar-container');
+    const barNum = bar.id.split('-')[1];
+    
+    // 1. Get current state
+    const currentSplit = bar.getAttribute('data-split') === 'true';
+    const newSplit = !currentSplit;
+    
+    // 2. Scrape data to preserve it during re-render
+    // (We reuse the save logic's concept here locally)
+    const row = bar.closest('.editor-row');
+    const gridObj = {};
+    
+    // Capture subd/split state
+    gridObj[`bar${barNum}_subd`] = bar.getAttribute('data-subd');
+    gridObj[`bar${barNum}_split`] = newSplit; // Apply toggle
+    
+    // Capture existing cell data
+    bar.querySelectorAll('.grid-cell').forEach(cell => {
+        if(cell.innerText || cell.style.backgroundColor) {
+            gridObj[cell.id] = { sym: cell.innerText, color: cell.style.backgroundColor };
+        }
+    });
+
+    // 3. Regenerate
+    bar.outerHTML = window.generateBarHTML(barNum, gridObj);
+    window.closePopup();
   };
 
   window.generateHeaderBeats = function(id) {
     const el = document.getElementById(id);
     if(!el) return;
     let html = '';
-    const beats = ['1','e','+','a','2','e','+','a','3','e','+','a','4','e','+','a'];
-    beats.forEach(b => html += `<div class="beat-num">${b}</div>`);
+    
+    // CHANGE: Header now reflects the default 8th note grid (1 & 2 & 3 & 4 &)
+    // We use slots=2 to match the visual width of the default grid cells
+    const beats = ['1','-','2','-','3','-','4','-'];
+    
+    beats.forEach(b => {
+        // We manually force the slot width to 2 (8th note width) for alignment
+        html += `<div class="beat-num" style="--slots:2; flex: 0 0 calc(var(--cell-width) * 2);">${b}</div>`;
+    });
     el.innerHTML = html;
   };
 
@@ -125,41 +174,138 @@
     event.stopPropagation();
     activeCell = cell; 
     
-    // Symbols
-    const container = document.getElementById('popup-symbols');
-    container.innerHTML = '';
+    // 1. POPULATE SYMBOLS (Standard)
+    const wrapper = document.getElementById('popup-split-wrapper');
+    if (!wrapper) {
+        // If wrapper doesn't exist yet (first run), create the container structure dynamically
+        // forcing the old #popup-symbols to become part of this new layout
+        const oldContainer = document.getElementById('popup-symbols');
+        const parent = oldContainer.parentNode;
+        
+        // Create the new layout HTML
+        const newLayout = document.createElement('div');
+        newLayout.className = 'popup-content-row';
+        newLayout.id = 'popup-split-wrapper';
+        
+        // Create Left Col (Symbols)
+        const symCol = document.createElement('div');
+        symCol.className = 'symbol-list';
+        symCol.id = 'popup-symbols'; // Keep old ID for compatibility
+        
+        // Create Right Col (Colors)
+        const colCol = document.createElement('div');
+        colCol.className = 'color-list';
+        colCol.id = 'popup-colors';
+        
+        newLayout.appendChild(symCol);
+        newLayout.appendChild(colCol);
+        
+        // Swap old for new
+        parent.replaceChild(newLayout, oldContainer);
+    }
+    
+    // A. Generate Symbols (Left)
+    const symContainer = document.getElementById('popup-symbols');
+    symContainer.innerHTML = '';
     if(configData.symbols) {
         configData.symbols.forEach(s => {
             const row = document.createElement('div');
             row.className = 'symbol-row';
             row.onclick = () => window.selectSymbol(s);
             row.innerHTML = `<div class="symbol-preview" style="background-color:${s.color}">${s.symbol}</div><div class="symbol-meaning">${s.meaning}</div>`;
-            container.appendChild(row);
+            symContainer.appendChild(row);
         });
     }
 
-    // Text Input
+    // B. Generate Colors (Right)
+    const colContainer = document.getElementById('popup-colors');
+    colContainer.innerHTML = '';
+    
+    // 1. Transparent Option (Unchanged)
+    const clearDiv = document.createElement('div');
+    clearDiv.className = 'color-swatch';
+    clearDiv.style.background = 'white'; 
+    clearDiv.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
+    clearDiv.style.backgroundSize = '10px 10px';
+    clearDiv.title = "Clear Background";
+    clearDiv.onclick = () => window.selectBackgroundColor('');
+    colContainer.appendChild(clearDiv);
+
+    // 2. Palette Colors (UPDATED)
+    // Use PALETTE to access the .light property
+    if(typeof PALETTE !== 'undefined') {
+        PALETTE.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'color-swatch';
+            
+            // CHANGE: Use LIGHT color for background selection
+            div.style.backgroundColor = c.light; 
+            div.title = c.name;
+            
+            // CHANGE: Pass LIGHT color to the function
+            div.onclick = () => window.selectBackgroundColor(c.light);
+            
+            colContainer.appendChild(div);
+        });
+    }
+
+    // 2. POPULATE TEXT (Standard)
     document.getElementById('popup-comment').value = cell.innerText; 
 
-    // Subdivision Highlight
-    const bar = cell.closest('.bar-container');
-    const currentSubd = parseInt(bar.getAttribute('data-subd')) || 16;
+    // 3. HIGHLIGHT SUBDIVISION (Standard)
+    const currentBar = cell.closest('.bar-container');
+    const currentSubd = parseInt(currentBar.getAttribute('data-subd')) || 8; 
     document.querySelectorAll('.subd-btn').forEach(btn => {
         btn.classList.remove('active');
         if(parseInt(btn.dataset.val) === currentSubd) btn.classList.add('active');
     });
-
-    // Show Popup
+    
+    // 4. SHOW POPUP (Hidden first to calculate dimensions)
     const popup = document.getElementById('cellPopup');
     popup.style.display = 'flex';
-    const rect = cell.getBoundingClientRect();
-    popup.style.top = (rect.bottom + 5) + 'px';
-    let leftPos = rect.left - 20; 
-    if(leftPos < 10) leftPos = 10;
-    popup.style.left = leftPos + 'px'; 
     
-    // Auto focus text
-    document.getElementById('popup-comment').focus();
+    // --- NEW POSITIONING LOGIC ---
+    
+    const currentRow = currentBar.closest('.editor-row');
+    const popupRect = popup.getBoundingClientRect();
+    const buffer = 10;
+    
+    // A. DETERMINE TARGET BAR (Opposite side)
+    // If we are in Bar 1 (Left), target is Bar 2. If in Bar 2, target is Bar 1.
+    const isBar1 = currentBar.id.includes('bar-1');
+    const targetBarId = isBar1 ? '#bar-2' : '#bar-1';
+    const targetBar = currentRow.querySelector(targetBarId);
+    
+    let leftPos = 0;
+    let topPos = 0;
+
+    // B. CALCULATE HORIZONTAL (Center over target bar)
+    if (targetBar) {
+        const targetRect = targetBar.getBoundingClientRect();
+        // Center of target bar - Half of popup width
+        leftPos = targetRect.left + (targetRect.width / 2) - (popupRect.width / 2);
+    } else {
+        // Fallback if bar 2 doesn't exist (rare edge case): Center screen
+        leftPos = (window.innerWidth / 2) - (popupRect.width / 2);
+    }
+
+    // C. CALCULATE VERTICAL (Center on Mouse Y)
+    // Start by centering popup vertically on the mouse cursor
+    topPos = event.clientY - (popupRect.height / 2);
+
+    // D. VERTICAL CLAMP (Prevent going off-screen)
+    // Check Top Edge
+    if (topPos < buffer) {
+        topPos = buffer;
+    }
+    // Check Bottom Edge
+    if (topPos + popupRect.height > window.innerHeight - buffer) {
+        topPos = window.innerHeight - popupRect.height - buffer;
+    }
+
+    // Apply
+    popup.style.left = leftPos + 'px'; 
+    popup.style.top = topPos + 'px';
   };
 
   window.selectSymbol = function(s) {
@@ -174,6 +320,14 @@
     if(activeCell) {
         activeCell.innerText = document.getElementById('popup-comment').value;
         window.closePopup();
+    }
+  };
+
+  window.selectBackgroundColor = function(hex) {
+    if(activeCell) {
+        activeCell.style.backgroundColor = hex;
+        window.closePopup();
+        window.markUnsaved();
     }
   };
 
@@ -205,51 +359,82 @@
     if(!activeCell) return;
     const bar = activeCell.closest('.bar-container');
     
-    // Scrape data
+    // 1. Scrape Bar Attributes
     const subd = bar.getAttribute('data-subd');
+    const isSplit = bar.getAttribute('data-split') === 'true';
+    
     const cellData = {};
     
+    // 2. Scrape Cells (Distinguishing Main vs Aux)
     bar.querySelectorAll('.grid-cell').forEach(cell => {
-        // ID format: b1_c5. We need just the index (5) to make it agnostic of Bar number
-        const idParts = cell.id.split('_c');
-        if(idParts.length > 1) {
-            const idx = idParts[1]; // e.g., "5"
-            cellData[idx] = { 
+        // ID formats: "b1_c5" OR "aux_b1_c5"
+        // We need to extract the index (5) AND whether it is aux
+        
+        const isAux = cell.id.includes('aux_');
+        const parts = cell.id.split('_c'); // Split at column marker
+        
+        if(parts.length > 1) {
+            const idx = parts[1]; // e.g. "5"
+            
+            // Create a unique key for the clipboard: "5" or "aux_5"
+            const key = isAux ? `aux_${idx}` : idx;
+            
+            cellData[key] = { 
                 sym: cell.innerText, 
                 color: cell.style.backgroundColor 
             };
         }
     });
     
-    clipboardBar = { subd: subd, cells: cellData };
+    clipboardBar = { 
+        subd: subd, 
+        split: isSplit, // Save split state
+        cells: cellData 
+    };
     
-    // Optional: Visual feedback could go here
     window.closePopup();
   };
 
+  // --- PASTE FUNCTIONS ---
+
   window.pasteBar = function() {
+    _pasteLogic(false); // Normal paste (Not ghosted)
+  };
+
+  window.pasteRepeat = function() {
+    _pasteLogic(true); // Ghost paste
+  };
+
+  // Internal helper to avoid duplicate code
+  function _pasteLogic(isGhost) {
     if(!activeCell || !clipboardBar) return;
     
     const targetBar = activeCell.closest('.bar-container');
-    const targetRow = targetBar.closest('.editor-row');
-    const targetBarNum = targetBar.id.split('-')[1]; // 1 or 2
+    const targetBarNum = targetBar.id.split('-')[1]; 
     
-    // Construct new gridObj for the target bar
     const newGridObj = {};
     
-    // 1. Apply Subd
+    // 1. Apply Structure
     newGridObj[`bar${targetBarNum}_subd`] = clipboardBar.subd;
+    newGridObj[`bar${targetBarNum}_split`] = clipboardBar.split;
+    newGridObj[`bar${targetBarNum}_repeat`] = isGhost; // <--- APPLY FLAG
     
-    // 2. Apply Cells (Map generic index back to target bar ID)
-    for (const [idx, data] of Object.entries(clipboardBar.cells)) {
-        const newId = `b${targetBarNum}_c${idx}`;
+    // 2. Apply Cells
+    for (const [key, data] of Object.entries(clipboardBar.cells)) {
+        let newId = '';
+        if (key.startsWith('aux_')) {
+            const idx = key.split('_')[1];
+            newId = `aux_b${targetBarNum}_c${idx}`;
+        } else {
+            newId = `b${targetBarNum}_c${key}`;
+        }
         newGridObj[newId] = data;
     }
     
-    // 3. Regenerate HTML
     targetBar.outerHTML = window.generateBarHTML(targetBarNum, newGridObj);
     window.closePopup();
-  };
+    window.markUnsaved();
+  }
 
   window.clearCell = function() {
     if(activeCell) { 
@@ -257,6 +442,21 @@
         activeCell.style.backgroundColor = ''; 
         window.closePopup(); 
     }
+  };
+
+  window.clearBar = function() {
+    if(!activeCell) return;
+    const bar = activeCell.closest('.bar-container');
+    const barNum = bar.id.split('-')[1];
+
+    // Create a fresh grid object with explicit defaults
+    const newGridObj = {};
+    newGridObj[`bar${barNum}_subd`] = 8;     // Reset to 8th notes
+    newGridObj[`bar${barNum}_split`] = false; // Reset split status
+
+    // Regenerate and replace
+    bar.outerHTML = window.generateBarHTML(barNum, newGridObj);
+    window.closePopup();
   };
 
   window.closePopup = function() { document.getElementById('cellPopup').style.display = 'none'; };

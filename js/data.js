@@ -74,6 +74,7 @@ function loadEditor(songData) {
 
   document.getElementById('editor-view').style.display = 'flex';
   document.getElementById('saveSongBtn').style.display = 'flex';
+  document.getElementById('printBtn').style.display = 'flex';
 
   const container = document.getElementById('rows-container');
   container.innerHTML = '';
@@ -97,11 +98,19 @@ async function saveCurrentSong() {
           }
       });
 
-      // 2. Scrape Subdivision State
+      // 2. Scrape Subdivision/Split/Repeat State
       const bar1 = row.querySelector('#bar-1');
       const bar2 = row.querySelector('#bar-2');
-      if(bar1) gridData['bar1_subd'] = bar1.getAttribute('data-subd');
-      if(bar2) gridData['bar2_subd'] = bar2.getAttribute('data-subd');
+      if(bar1) {
+           gridData['bar1_subd'] = bar1.getAttribute('data-subd');
+           gridData['bar1_split'] = bar1.getAttribute('data-split');
+           gridData['bar1_repeat'] = bar1.getAttribute('data-repeat');
+      }
+      if(bar2) {
+           gridData['bar2_subd'] = bar2.getAttribute('data-subd');
+           gridData['bar2_split'] = bar2.getAttribute('data-split');
+           gridData['bar2_repeat'] = bar2.getAttribute('data-repeat');
+      }
 
       rows.push({
           structure: row.querySelector('.struct-select').value,

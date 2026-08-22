@@ -5,7 +5,6 @@ function printSheet() {
     band: document.getElementById('disp-band').value || 'Unknown Band',
     bpm: document.getElementById('disp-bpm').value || '120'
   };
-  const is16thHidden = document.body.classList.contains('hide-16th');
 
   // 2. SCRAPE ROWS
   const rawRows = [];
@@ -14,8 +13,8 @@ function printSheet() {
     const lyricsInput = row.querySelector('.lyrics-input');
 
     // Clone bars
-    const bar1 = row.querySelector('#bar-1').outerHTML;
-    const bar2 = row.querySelector('#bar-2').outerHTML;
+    const bar1 = row.querySelector('#bar-1');
+    const bar2 = row.querySelector('#bar-2');
 
     rawRows.push({
       struct: {
@@ -26,29 +25,27 @@ function printSheet() {
           text: lyricsInput.value,
           color: lyricsInput.style.color
       },
-      bar1: bar1,
-      bar2: bar2
+      bar1: bar1.outerHTML,
+      bar2: bar2.outerHTML
     });
   });
 
-  // 3. GENERATE HEADER ROW (Matching Grid Logic exactly)
+  // 3. GENERATE HEADER ROW
   function getHeaderBarHTML(barNum) {
       let cells = '';
-      const labels = ['1','e','+','a','2','e','+','a','3','e','+','a','4','e','+','a'];
+      // 8th note labels
+      const labels = ['1','-','2','-','3','-','4','-'];
 
-      for(let i=0; i<16; i++) {
+      for(let i=0; i<8; i++) {
          let borderClass = '';
-         if ((i+1) % 4 === 0 && i < 15) borderClass = 'border-dark';
+         if ((i+1) % 2 === 0 && i < 7) borderClass = 'border-dark';
 
-         let hideClass = '';
-         if ((i+1) % 2 === 0) hideClass = 'even-cell';
-
-         cells += `<div class="grid-cell header-cell ${borderClass} ${hideClass}">${labels[i]}</div>`;
+         cells += `<div class="grid-cell header-cell ${borderClass}">${labels[i]}</div>`;
       }
-      return `<div class="bar-container header-container" data-subd="16">${cells}</div>`;
+      return `<div class="bar-container header-container" data-subd="8">${cells}</div>`;
   }
 
-  // 4. CALCULATE ROWSPANS (Merging)
+  // 4. CALCULATE ROWSPANS
   if (rawRows.length > 0) {
     let currentStruct = rawRows[0].struct;
     let currentLyrics = rawRows[0].lyrics.text;
@@ -82,7 +79,7 @@ function printSheet() {
   }
 
   // 5. GENERATE PRINT WINDOW
-  const printWindow = window.open('', '_blank');
+  const printWindow = window.open('', '_blank', 'width=1200,height=900,menubar=yes,toolbar=yes,scrollbars=yes');
 
   const html = `
     <!DOCTYPE html>
@@ -91,7 +88,6 @@ function printSheet() {
       <title>${meta.title}</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        /* --- RESET --- */
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         body {
@@ -125,7 +121,7 @@ function printSheet() {
         col.c-lyrics { width: 40%; }
         col.c-bar    { width: 25%; }
 
-        tr { border-bottom: 1px solid #000; height: 28px; }
+        tr { border-bottom: 1px solid #bbb; height: 28px; }
 
         /* --- CELLS --- */
         th {
@@ -147,25 +143,24 @@ function printSheet() {
           height: 100% !important;
           min-height: 28px; /* Match tr height */
         }
+        .bar-container.header-container { min-height: 14px; }
+        .bar-container.repeat-mode { opacity: 0.4 !important; filter: grayscale(100%) !important; }
 
         .grid-cell {
           display: flex !important;
           flex: 1 1 0px !important;
           justify-content: center;
           align-items: center;
-          border-right: 1px solid #000 !important;
+          border-right: 1px solid #bbb !important;
+          font-size: 12px !important;
+          font-weight: bold;
           box-sizing: border-box !important;
         }
         .grid-cell:last-child { border-right: none !important; }
+        .grid-cell.border-dark { border-right: 1px solid #999 !important; }
 
         /* Header Styling */
         .header-cell { background: #e0e0e0; font-size: 9px; color: #333; }
-
-        /* --- HIDE 16TH LOGIC --- */
-        body.hide-16th .grid-cell:nth-child(even),
-        body.hide-16th .header-cell.even-cell {
-            display: none !important;
-        }
 
         /* --- PRINT MEDIA (Standard A4) --- */
         @media print {
@@ -173,13 +168,19 @@ function printSheet() {
           .sheet { width: 100%; max-width: none; box-shadow: none; padding: 0; margin: 0; }
           tr { break-inside: avoid; }
         }
+
+        /* --- SPLIT BARS --- */
+        .bar-container.split-mode { flex-direction: column !important; }
+        .sub-line { display: flex; flex: 1; width: 100%; }
+        .sub-line.upper { border-bottom: 1px solid #bbb; }
+        .sub-line .grid-cell { border-bottom: none !important; }
       </style>
     </head>
-    <body class="${is16thHidden ? 'hide-16th' : ''}">
+    <body>
       <div class="sheet">
           <div class="song-header">
               <div class="song-title">${meta.title}</div>
-              <div class="song-meta">BAND: ${meta.band} &nbsp;|&nbsp; BPM: ${meta.bpm}</div>
+              <div class="song-meta">${meta.band} &nbsp;|&nbsp; BPM: ${meta.bpm}</div>
           </div>
 
           <table>
@@ -190,15 +191,13 @@ function printSheet() {
               <col class="c-bar">
             </colgroup>
             <thead>
-              <tr>
-                <th>Structure</th>
-                <th>Lyrics</th>
+              <tr style="height: 14px;">
+                <th rowspan="2" style="border-bottom: 1px solid #000;">Structure</th>
+                <th rowspan="2" style="border-bottom: 1px solid #000;">Lyrics</th>
                 <th>Bar 1</th>
                 <th>Bar 2</th>
               </tr>
-              <tr style="height: 20px;">
-                  <th style="background:#fff; border:none; border-right:1px solid #000;"></th>
-                  <th style="background:#fff; border:none; border-right:1px solid #000;"></th>
+              <tr style="height: 14px;">
                   <td class="td-grid" style="border-bottom: 1px solid #000;">${getHeaderBarHTML(1)}</td>
                   <td class="td-grid" style="border-bottom: 1px solid #000;">${getHeaderBarHTML(2)}</td>
               </tr>

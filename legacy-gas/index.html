@@ -8,21 +8,17 @@
 <body>
 
   <div class="app-header">
-    <div class="app-title">DrumScribe</div>
-    <div class="app-version">V1.0</div>
+    <div class="app-title">DRUMSHEET 🥁</div>
+    <div class="app-version">V1.1</div>
   </div>
 
   <div class="nav-bar">
     <button onclick="openNewSongModal()"><span class="material-icons">add</span> New Song</button>
     <button onclick="openLoadSongModal()"><span class="material-icons">folder_open</span> Load Song</button>
-    <button onclick="printSheet()">
+    <button id="printBtn" onclick="printSheet()" style="display:none;">
       <span class="material-icons">print</span> Print Sheet
     </button>
     <button onclick="openConfigModal()"><span class="material-icons">settings</span> Configure</button>
-    <button id="btn-toggle-16" onclick="toggle16thView()">
-        <span class="material-icons">grid_on</span> 
-        <span>Hide 16th</span>
-    </button>
     <button id="saveSongBtn" onclick="saveCurrentSong()" style="margin-left:auto; display:none;" class="primary"><span class="material-icons">save</span> Save Song</button>
   </div>
 
@@ -155,12 +151,16 @@
     <div style="border-top:1px solid #eee; margin:10px 0;"></div>
     
     <div class="popup-actions">
-      <button class="popup-btn" onclick="copyBar()">Copy Bar</button>
-      <button class="popup-btn" onclick="pasteBar()">Paste Bar</button>
+      <button class="popup-btn" onclick="copyBar()">Copy</button>
+      <button class="popup-btn" onclick="pasteBar()">Paste</button>
+      <button class="popup-btn" onclick="pasteRepeat()">Paste (Ghost)</button> </div>
+    <div class="popup-actions">
+       <button class="popup-btn" onclick="toggleSplit()">Split/Merge</button>
     </div>
 
     <div class="popup-actions">
       <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearCell()">Clear Cell</button>
+      <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearBar()">Clear Bar</button>
     </div>
   </div>
 

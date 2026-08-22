@@ -4,7 +4,7 @@
     --accent: #3498db;
     --border: #bdc3c7;
     --danger: #e74c3c;
-    --cell-width: 24px; /* Base width for a single 16th note */
+    --cell-width: 20px; /* Base width for a single 16th note */
 }
 
 /* --- GLOBAL RESET --- */
@@ -39,7 +39,6 @@ button:hover { background: #f0f0f0; }
   background: var(--primary); color: white; font-weight: bold;
   height: 40px; flex-shrink: 0;
   border-bottom: 1px solid rgba(0,0,0,0.1);
-  padding-right: 17px; /* Scrollbar compensation */
 }
 
 /* 2. ROWS CONTAINER */
@@ -137,18 +136,23 @@ button:hover { background: #f0f0f0; }
 
 /* Header Specifics */
 .beat-numbers { display: flex; background: #34495e; font-size: 0.7rem; align-items: center; height: 100%; }
-.beat-num { --slots: 1; border-right: 1px solid rgba(255,255,255,0.1); }
+.beat-num {
+    --slots: 1;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    /* Critical for alignment: obey the slot width */
+    width: calc(var(--cell-width) * var(--slots, 1));
+    justify-content: center;
+}
+
 /* Visual Trick: Make beat numbers 1, 2, 3, 4 have a distinct right border in header too */
 .beat-num:nth-child(4n) { border-right: 1px solid rgba(255,255,255,0.3); }
 
-.bar-header { display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.3); }
-
-/* --- TOGGLE LOGIC --- */
-body.hide-16th .beat-num:nth-child(even) { display: none !important; }
-body.hide-16th .bar-container[data-subd="16"] .grid-cell:nth-child(even) { display: none !important; }
-body.hide-16th .bar-container:not([data-subd="16"]) .grid-cell {
-    width: calc((var(--cell-width) * var(--slots)) / 2);
-    flex: 0 0 calc((var(--cell-width) * var(--slots)) / 2);
+.bar-header {
+    display: flex;
+    flex-direction: column;
+    border-left: 2px solid transparent;
+    border-right: 2px solid rgba(255,255,255,0.3);
+    margin-right: -2px;
 }
 
 /* --- POPUP (Phase 4) --- */
@@ -165,8 +169,69 @@ body.hide-16th .bar-container:not([data-subd="16"]) .grid-cell {
 .subd-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 .cell-comment-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; box-sizing: border-box; }
 .popup-actions { display: flex; gap: 8px; margin-top: 5px; }
-.popup-btn { flex: 1; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; border-radius: 4px; font-size: 0.85rem; text-align: center; transition: background 0.2s; }
+.popup-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.85rem;
+
+    /* FIX: Center content in flexbox (overrides global button left-align) */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    transition: background 0.2s;
+}
 .popup-btn:hover { background: #eee; }
+
+/* --- POPUP SPLIT VIEW --- */
+.popup-content-row {
+    display: flex;
+    gap: 8px;
+    /* Fixed height is required to force scrolling inside the children */
+    height: 150px;
+}
+
+/* Symbol Column (Left, Wider) */
+.symbol-list {
+    flex: 3;
+    display: flex; flex-direction: column; gap: 4px;
+    overflow-y: auto; /* Scrollable */
+    border: 1px solid #eee; padding: 4px; border-radius: 4px;
+    height: 100%; /* Fill parent height */
+}
+
+/* Color Column (Right, Narrow) */
+.color-list {
+    flex: 1;
+    display: flex; flex-direction: column; gap: 4px;
+    overflow-y: auto; /* Scrollable */
+    border: 1px solid #eee; padding: 4px; border-radius: 4px;
+    height: 100%; /* Fill parent height */
+}
+
+/* Color Swatch Styling */
+.color-swatch {
+    /* CHANGE: Double Height */
+    height: 24px;
+    min-height: 24px; /* Force height even if flex tries to squish */
+
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    cursor: pointer;
+    box-sizing: border-box; /* Include border in height */
+    transition: transform 0.1s;
+}
+
+.color-swatch:hover {
+    transform: scale(1.1); /* Subtle zoom */
+    border-color: #999;
+    z-index: 1;
+}
 
 /* --- MODALS (Phase 2 Restored) --- */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000; }
@@ -207,4 +272,49 @@ select.color-select option { font-weight: normal; }
     font-size: 0.9rem; /* Matches standard beat size */
     font-weight: bold;
     letter-spacing: 1px;
+}
+
+/* --- SPLIT BAR (Nested Rows) --- */
+
+/* When a bar is split, it becomes a column wrapper */
+.bar-container.split-mode {
+    flex-direction: column;
+}
+
+/* The sub-lines inside a split bar */
+.sub-line {
+    display: flex;
+    flex: 1; /* Takes 50% height each */
+    width: 100%;
+    position: relative;
+}
+
+/* Border between top and bottom sub-lines */
+.sub-line.upper {
+    border-bottom: 1px solid #ccc;
+}
+
+/* Adjust cell borders in split mode to match standard look */
+.sub-line .grid-cell {
+    border-bottom: none; /* Internal cells don't need bottom borders */
+}
+
+/* Ensure the hit targets are still usable */
+.sub-line .grid-cell {
+    font-size: 0.7rem; /* Slightly smaller font for split rows */
+}
+
+#saveSongBtn {
+    background-color: var(--danger) !important; /* Uses the red variable #e74c3c */
+    color: white !important;
+    border-color: #c0392b !important; /* Slightly darker red border */
+}
+
+#saveSongBtn:hover {
+    background-color: #c0392b !important; /* Darker red on hover */
+}
+
+.bar-container.repeat-mode {
+    opacity: 0.4; /* Make it faint */
+    filter: grayscale(100%); /* Remove color (make it grey) */
 }

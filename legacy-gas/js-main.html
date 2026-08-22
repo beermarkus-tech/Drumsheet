@@ -7,12 +7,23 @@
     { name: 'Black', hex: '#000000' }, { name: 'Blue', hex: '#0000FF' },
     { name: 'Red', hex: '#FF0000' }, { name: 'Dark Green', hex: '#006400' }, { name: 'Magenta', hex: '#FF00FF' }
   ];
-  const SYMBOL_COLORS = [
-    { name: 'White', hex: '#FFFFFF' }, { name: 'Light Red', hex: '#FFCCCC' }, { name: 'Light Orange', hex: '#FFE5CC' },
-    { name: 'Light Yellow', hex: '#FFFFCC' }, { name: 'Light Green', hex: '#E5FFCC' }, { name: 'Mint', hex: '#CCFFCC' },
-    { name: 'Cyan', hex: '#CCFFFF' }, { name: 'Light Blue', hex: '#CCE5FF' }, { name: 'Lavender', hex: '#E5CCFF' },
-    { name: 'Light Pink', hex: '#FFCCFF' }, { name: 'Grey', hex: '#E0E0E0' }
+  // --- NEW PALETTE DEFINITION ---
+  const PALETTE = [
+    { name: 'White',  strong: '#d9d9d9',  light: '#ffffff' },
+    { name: 'Red',    strong: '#ea9999',  light: '#f4cccc' },
+    { name: 'Orange', strong: '#f9cb9c',  light: '#fce5cd' },
+    { name: 'Yellow', strong: '#ffe599',  light: '#fff2cc' },
+    { name: 'Green',  strong: '#b6d7a8',  light: '#d9ead3' },
+    { name: 'Mint',   strong: '#a2c4c9',  light: '#d0e0e3' },
+    { name: 'Cyan',   strong: '#9fc5e8',  light: '#cfe2f3' },
+    { name: 'Blue',   strong: '#a4c2f4',  light: '#c9daf8' },
+    { name: 'Purple', strong: '#b4a7d6',  light: '#b4a7d6' },
+    { name: 'Pink',   strong: '#d5a6bd',  light: '#ead1dc' },
+    { name: 'Grey',   strong: '#cccccc',  light: '#efefef' },
   ];
+
+  // Mapped for backward compatibility with Config Modal (Symbols use Strong colors)
+  const SYMBOL_COLORS = PALETTE.map(p => ({ name: p.name, hex: p.strong }));
 
   // --- INITIALIZATION ---
   window.onload = function() {
@@ -34,6 +45,47 @@
       }
     });
   };
+
+  // --- KEYBOARD SHORTCUTS ---
+  document.addEventListener('keydown', function(e) {
+    // 1. GUARD CLAUSE: Do nothing if typing in an input or textarea
+    // This allows normal copy/paste of text in Lyrics and Popup Comment
+    const activeTag = document.activeElement.tagName.toLowerCase();
+    if (activeTag === 'input' || activeTag === 'textarea') return;
+
+    // 2. SHORTCUTS (Only active when NOT typing)
+    
+    // CTRL + C = Copy Bar
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      if (activeCell) {
+        // e.preventDefault(); // Optional: Keep default copy behavior if you want system clipboard too
+        copyBar();
+        // Visual feedback
+        activeCell.style.outline = "2px solid blue";
+        setTimeout(() => activeCell.style.outline = "none", 200);
+      }
+    }
+
+    // CTRL + SHIFT + V = Ghost Paste (Repeat)
+    // (Check Shift first because 'V' matches both v and V)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+      e.preventDefault(); // Stop browser from doing anything weird
+      if (activeCell && clipboardBar) {
+        pasteRepeat();
+      }
+      return;
+    }
+
+    // CTRL + V = Paste Bar (Standard)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      // We do NOT preventDefault here generally, but since we have the Guard Clause above,
+      // we know we are NOT in an input. So it is safe to hijack it for the Grid.
+      e.preventDefault(); 
+      if (activeCell && clipboardBar) {
+        pasteBar();
+      }
+    }
+  });
 
   // --- MODAL UTILS ---
   function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -104,26 +156,5 @@
   function getTextColorForBg(hex) {
     if(['#000000', '#0000FF', '#006400', '#FF0000', '#FF00FF'].includes(hex)) return 'white';
     return 'black';
-  }
-
-  // --- VIEW CONTROLS ---
-  let is16thVisible = true;
-
-  function toggle16thView() {
-    is16thVisible = !is16thVisible;
-    
-    const body = document.body;
-    const btn = document.getElementById('btn-toggle-16');
-    const span = btn.querySelector('span:nth-child(2)'); // The text span
-    
-    if (is16thVisible) {
-        body.classList.remove('hide-16th');
-        span.innerText = "Hide 16th";
-        btn.querySelector('.material-icons').innerText = "grid_on";
-    } else {
-        body.classList.add('hide-16th');
-        span.innerText = "Show 16th";
-        btn.querySelector('.material-icons').innerText = "grid_off";
-    }
   }
 </script>
