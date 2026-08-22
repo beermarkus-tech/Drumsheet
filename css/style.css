@@ -119,20 +119,33 @@ button:hover { background: #f0f0f0; }
   font-weight: bold; font-size: 0.9rem;
   cursor: pointer; user-select: none;
 
-  /* Default: Light Grey Border (for 16th notes and off-beat 8ths) */
-  border-right: 1px solid #eee;
-
   width: calc(var(--cell-width) * var(--slots, 1));
   flex: 0 0 calc(var(--cell-width) * var(--slots, 1));
 }
 
-/* BEAT BORDER (Quarter Note Boundaries) */
-/* Applied via JS to cells ending on 4, 8, 12 */
-.grid-cell.border-dark {
-    border-right: 1px solid #999; /* Darker Grey */
+.grid-cell:hover { background-color: #f0f0f0; }
+
+/* --- ALWAYS-VISIBLE 16TH GRIDLINES --- */
+/* Independent of the bar's actual subdivision/merge state, drawn on top of
+   cell backgrounds so a merged (wider) cell still shows the 16th-note ticks
+   it spans. Replaces the old per-cell border approach, which disappeared
+   whenever cells were merged into a coarser subdivision. */
+.bar-gridlines {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 2;
 }
 
-.grid-cell:hover { background-color: #f0f0f0; }
+.grid-tick {
+    position: absolute;
+    top: 0; bottom: 0; width: 0;
+    border-left: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.grid-tick.strong {
+    border-left: 2px solid rgba(0, 0, 0, 0.45);
+}
 
 /* Header Specifics */
 .beat-numbers { display: flex; background: #34495e; font-size: 0.7rem; align-items: center; height: 100%; }

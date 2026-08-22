@@ -97,9 +97,23 @@ window.generateBarHTML = function (barNum, gridObj) {
        id="bar-${barNum}"
        data-subd="${subd}"
        data-split="${isSplit}"
-       data-repeat="${isRepeat}">  ${innerHTML}
+       data-repeat="${isRepeat}">  ${innerHTML}${generateBarGridlines()}
   </div>`;
 };
+
+// Always-visible 16th-note ruler, independent of the bar's actual subdivision/merge
+// state — a merged (wider) cell still shows the ticks for the 16th positions it spans.
+// Strong before every quarter (1,5,9,13); the very first "1" coincides with the bar's
+// own left border already, so only the 15 interior boundaries need a tick.
+function generateBarGridlines() {
+  let html = '<div class="bar-gridlines">';
+  for (let k = 1; k <= 15; k++) {
+      const strong = (k % 4 === 0);
+      html += `<div class="grid-tick${strong ? ' strong' : ''}" style="left:${(k / 16) * 100}%;"></div>`;
+  }
+  html += '</div>';
+  return html;
+}
 
 window.toggleSplit = function () {
   if(!activeCell) return;
@@ -134,12 +148,14 @@ window.generateHeaderBeats = function (id) {
   if(!el) return;
   let html = '';
 
-  // Header reflects the default 8th note grid (1 & 2 & 3 & 4 &)
-  const beats = ['1','-','2','-','3','-','4','-'];
+  // Full 16th-note grid header (1 e & a  2 e & a  3 e & a  4 e & a), matching
+  // the always-visible 16th gridline overlay. (A future 8th/16th display
+  // toggle will make this configurable, consolidated with the per-bar
+  // subdivision setting.)
+  const beats = ['1','e','&','a','2','e','&','a','3','e','&','a','4','e','&','a'];
 
   beats.forEach(b => {
-      // Manually force the slot width to 2 (8th note width) for alignment
-      html += `<div class="beat-num" style="--slots:2; flex: 0 0 calc(var(--cell-width) * 2);">${b}</div>`;
+      html += `<div class="beat-num" style="--slots:1; flex: 0 0 calc(var(--cell-width) * 1);">${b}</div>`;
   });
   el.innerHTML = html;
 };
