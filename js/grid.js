@@ -155,7 +155,8 @@ window.generateHeaderBeats = function (id) {
   const beats = ['1','e','&','a','2','e','&','a','3','e','&','a','4','e','&','a'];
 
   beats.forEach(b => {
-      html += `<div class="beat-num" style="--slots:1; flex: 0 0 calc(var(--cell-width) * 1);">${b}</div>`;
+      const isMajor = /^[1234]$/.test(b);
+      html += `<div class="beat-num${isMajor ? '' : ' minor'}" style="--slots:1; flex: 0 0 calc(var(--cell-width) * 1);">${b}</div>`;
   });
   el.innerHTML = html;
 };

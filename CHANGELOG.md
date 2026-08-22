@@ -4,6 +4,21 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 03
+
+- Grid lines are now a distinguishable three-tier system, driven by CSS
+  variables (`--line-strong`, `--line-dark`, `--line-light` in
+  `css/style.css`): black for the bar's own edges (before beat 1 / after
+  the last "a"), dark grey for the quarter-note lines (2, 3, 4), light
+  grey for "e"/"&"/"a". Horizontal grid lines (the line under each editor
+  row, and the divider between a split bar's main/aux lanes) now use the
+  same dark-grey tint as the quarter-note lines, tying the whole grid
+  together visually.
+- Header labels: only "1"/"2"/"3"/"4" stay bold; "e"/"&"/"a" are now
+  regular weight.
+- Still deferred to the print stylesheet (separate, self-contained CSS in
+  `js/print.js`) — will bring the same three-tier system over there later.
+
 ## Build 02
 
 - Bar grid now shows an always-visible 16th-note ruler (strong tick before
@@ -26,6 +41,9 @@ data migrated into Firestore.
 
 - 8th/16th display toggle: will change the header and gridline visibility,
   consolidated with the per-bar subdivision setting in the context menu.
+- Settings-modal tab for customizing the three grid line tints
+  (`--line-strong`/`--line-dark`/`--line-light`) directly in the app.
+- Bring the three-tier grid line system to the print stylesheet.
 - Delete song, duplicate/"Save As", search in Load Song list.
 - Autosave / dirty-state indicator (`window.markUnsaved` is currently a
   no-op stub).

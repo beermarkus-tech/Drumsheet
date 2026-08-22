@@ -5,6 +5,15 @@
     --border: #bdc3c7;
     --danger: #e74c3c;
     --cell-width: 20px; /* Base width for a single 16th note */
+
+    /* Three-tier grid line system: bar edges (before beat 1 / after the
+       last "a") are black; quarter-note lines (2, 3, 4) are dark grey;
+       e/&/a lines are light grey. Kept as variables so a future settings
+       UI could let these be customized without touching the JS/CSS that
+       draws them. */
+    --line-strong: #000000;
+    --line-dark: #555555;
+    --line-light: #bbbbbb;
 }
 
 /* --- GLOBAL RESET --- */
@@ -45,7 +54,7 @@ button:hover { background: #f0f0f0; }
 .editor-container { flex: 1; overflow-y: scroll; display: flex; flex-direction: column; }
 .editor-row {
   display: flex; align-items: stretch;
-  border-bottom: 1px solid #ddd; background: white;
+  border-bottom: 1px solid var(--line-dark); background: white;
   height: 30px; min-height: 30px; flex-shrink: 0;
 }
 
@@ -107,8 +116,8 @@ button:hover { background: #f0f0f0; }
 
 .bar-container {
   display: flex;
-  border-left: 2px solid #000;
-  border-right: 2px solid #000;
+  border-left: 2px solid var(--line-strong);
+  border-right: 2px solid var(--line-strong);
   margin-right: -2px;
   position: relative;
   z-index: 1;
@@ -140,11 +149,11 @@ button:hover { background: #f0f0f0; }
 .grid-tick {
     position: absolute;
     top: 0; bottom: 0; width: 0;
-    border-left: 1px solid rgba(0, 0, 0, 0.15);
+    border-left: 1px solid var(--line-light);
 }
 
 .grid-tick.strong {
-    border-left: 2px solid rgba(0, 0, 0, 0.45);
+    border-left: 2px solid var(--line-dark);
 }
 
 /* Header Specifics */
@@ -159,6 +168,7 @@ button:hover { background: #f0f0f0; }
 
 /* Visual Trick: Make beat numbers 1, 2, 3, 4 have a distinct right border in header too */
 .beat-num:nth-child(4n) { border-right: 1px solid rgba(255,255,255,0.3); }
+.beat-num.minor { font-weight: normal; }
 
 .bar-header {
     display: flex;
@@ -304,7 +314,7 @@ select.color-select option { font-weight: normal; }
 
 /* Border between top and bottom sub-lines */
 .sub-line.upper {
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--line-dark);
 }
 
 /* Adjust cell borders in split mode to match standard look */
