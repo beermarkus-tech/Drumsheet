@@ -18,7 +18,7 @@ const firebaseConfig = {
   appId: '1:490664045380:web:09bea719ae5f4c58ea4511'
 };
 
-// If you're reusing an existing Firebase project and added DrumScribe as a second,
+// If you're reusing an existing Firebase project and added Drumsheet as a second,
 // *named* Firestore database (Firestore Database > database selector > Create
 // database) rather than a new project, put that database ID here. Leave it null
 // to use the project's "(default)" database.

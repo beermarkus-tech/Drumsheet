@@ -1,4 +1,4 @@
-# DrumScribe
+# Drumsheet
 
 A drum tablature / setlist editor, now a static installable PWA backed by
 Firebase Firestore. Originally a Google Apps Script web app bound to a
@@ -48,12 +48,12 @@ Firestore supports multiple databases inside one project — you don't have to
 share an existing default database with another app.
 1. In that existing project: **Firestore Database** > the database selector
    at the top > **Create database**. Give it an ID other than `(default)`,
-   e.g. `drumscribe`. Same "test mode" choice as above.
+   e.g. `drumsheet`. Same "test mode" choice as above.
 2. Use that project's *existing* web app config (or register a new web app
    in it, same as step 3 above) — copy its `firebaseConfig` into
    `js/firebase-init.js` as usual.
 3. Set `FIRESTORE_DATABASE_ID` in `js/firebase-init.js` to the database ID
-   you chose (e.g. `'drumscribe'`), not `null`.
+   you chose (e.g. `'drumsheet'`), not `null`.
 
 ### Security rules
 
@@ -81,8 +81,8 @@ worth revisiting if it's ever shared more widely.
 2. Add a new file, paste in the contents of `legacy-gas/temp-export.gs`
    (this repo's copy — it reuses the existing `loadConfig()` from your
    `Code.gs`, so keep that file as-is).
-3. Reload the Sheet. A **DrumScribe Migration** menu appears.
-4. Click **DrumScribe Migration > Export All Data (for Firebase)**. A dialog
+3. Reload the Sheet. A **Drumsheet Migration** menu appears.
+4. Click **Drumsheet Migration > Export All Data (for Firebase)**. A dialog
    opens with pre-selected, copyable JSON text — copy it (Ctrl/Cmd+C).
 5. Paste that JSON back here in the conversation, and it'll be imported via
    `scripts/import-to-firebase.js` using a Firebase service account key

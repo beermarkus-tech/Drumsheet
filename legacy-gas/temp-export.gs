@@ -1,9 +1,9 @@
 /**
- * TEMPORARY MIGRATION HELPER — DrumScribe -> Firebase
+ * TEMPORARY MIGRATION HELPER — Drumsheet -> Firebase
  *
  * Paste this file's contents into your bound Apps Script project (Extensions >
  * Apps Script), alongside the existing Code.gs, then reload the Sheet. A new
- * "DrumScribe Migration" menu appears — use it to export everything as one
+ * "Drumsheet Migration" menu appears — use it to export everything as one
  * JSON blob, shown in a copyable dialog (not written into a cell, since a
  * single cell caps out around 50,000 characters and this can exceed that).
  *
@@ -12,7 +12,7 @@
 
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('DrumScribe Migration')
+    .createMenu('Drumsheet Migration')
     .addItem('Export All Data (for Firebase)', 'exportAllDataDialog')
     .addToUi();
 }

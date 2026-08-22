@@ -1,6 +1,6 @@
 {
-  "name": "DrumScribe",
-  "short_name": "DrumScribe",
+  "name": "Drumsheet",
+  "short_name": "Drumsheet",
   "description": "Drum tablature editor",
   "start_url": "./index.html",
   "scope": "./",

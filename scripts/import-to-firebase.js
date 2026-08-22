@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ONE-TIME MIGRATION: loads a DrumScribe export (produced by
+ * ONE-TIME MIGRATION: loads a Drumsheet export (produced by
  * legacy-gas/temp-export.gs) into Firestore.
  *
  * Usage:
@@ -9,7 +9,7 @@
  * - export.json:            the JSON you pasted from the Sheet's "Export All Data" dialog
  * - service-account-key.json: from Firebase Console > Project settings > Service accounts
  *                             > Generate new private key. Never commit this file.
- * - databaseId (optional):  only needed if DrumScribe uses a second, *named*
+ * - databaseId (optional):  only needed if Drumsheet uses a second, *named*
  *                             Firestore database within an existing project (Firestore
  *                             Database > database selector > Create database) rather
  *                             than the project's "(default)" database. Must match the
