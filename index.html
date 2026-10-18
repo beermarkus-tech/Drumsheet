@@ -18,7 +18,7 @@
   <div class="app-header">
     <div class="app-title">DRUMSHEET 🥁</div>
     <div class="app-header-right">
-      <div class="app-version">Build 20</div>
+      <div class="app-version">Build 21</div>
       <button id="reloadBtn" class="reload-btn" onclick="reloadApp()" title="Load the latest build"><span class="material-icons">refresh</span> Reload</button>
     </div>
   </div>
@@ -28,6 +28,9 @@
     <button onclick="openLoadSongModal()"><span class="material-icons">folder_open</span> Load Song</button>
     <button id="printBtn" onclick="downloadPdf()" style="display:none;">
       <span class="material-icons">picture_as_pdf</span> Download PDF
+    </button>
+    <button id="previewBtn" onclick="previewPdf()" style="display:none;">
+      <span class="material-icons">visibility</span> Preview
     </button>
     <button onclick="openConfigModal()"><span class="material-icons">settings</span> Configure</button>
     <div id="save-status" class="save-status" style="display:none;"></div>
@@ -202,6 +205,17 @@
         <button onclick="closeModal('barsModal')">Cancel</button>
         <button class="primary" onclick="applyBarsModal()">OK</button>
       </div>
+    </div>
+  </div>
+
+  <div id="pdfPreviewModal" class="modal-overlay">
+    <div class="preview-modal">
+      <div class="preview-header">
+        <div id="preview-title" class="preview-title">Preview</div>
+        <button class="primary" onclick="downloadPreviewedPdf()"><span class="material-icons">download</span> Download PDF</button>
+        <button onclick="closePdfPreview()">Close</button>
+      </div>
+      <div id="preview-pages" class="preview-pages"></div>
     </div>
   </div>
 

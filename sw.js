@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drumsheet-shell-build-20';
+const CACHE_NAME = 'drumsheet-shell-build-21';
 
 const APP_SHELL = [
   './',
@@ -11,6 +11,8 @@ const APP_SHELL = [
   './js/data.js',
   './js/print.js',
   './js/vendor/jspdf.umd.min.js',
+  './js/vendor/pdf.min.js',
+  './js/vendor/pdf.worker.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];

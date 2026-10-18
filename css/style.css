@@ -346,6 +346,20 @@ table.song-list td.song-actions { width: 1%; white-space: nowrap; padding: 4px 6
 .icon-btn .material-icons { font-size: 20px; }
 table.song-list tr.just-added td { background: #eaf4ff; }
 
+/* Reorder arrows in the Configure lists */
+.move-arrows { display: inline-flex; flex: 0 0 auto; }
+.move-arrow { cursor: pointer; color: #888; font-size: 22px; padding: 2px; border-radius: 4px; }
+.move-arrow:hover { color: var(--accent); background: #eee; }
+.move-arrow.disabled { color: #ddd; cursor: default; background: transparent; }
+
+/* PDF preview */
+.preview-modal { background: #eee; width: 96vw; max-width: 1000px; height: 94vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.preview-header { display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: white; border-bottom: 1px solid var(--border); }
+.preview-title { flex: 1; min-width: 0; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview-pages { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.preview-pages canvas { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.25); max-width: 100%; }
+.preview-status { color: #555; padding: 30px; }
+
 select.color-select { font-weight: bold; color: #333; }
 select.color-select option { font-weight: normal; }
 

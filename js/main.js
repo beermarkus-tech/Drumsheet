@@ -203,6 +203,7 @@ function cancelConfiguration() {
   configBackup = null;
   closeModal('configModal');
   refreshEditorStructures();
+  populateSidebarLists();
 }
 
 function applyConfigurationToEditor() {
@@ -269,6 +270,7 @@ function renderStructureRows() {
       <select class="color-select" onchange="updateStructure(${index}, 'color', this.value)" style="background-color:${escapeHtml(s.color)}; color:${getTextColorForBg(s.color)}">
         ${generateColorOptions(STRUCTURE_COLORS, s.color)}
       </select>
+      ${moveArrowsHTML('moveStructure', index, configData.structures.length)}
       <span class="material-icons" onclick="deleteStructure(${index})" style="cursor:pointer; color:red;">delete</span>`;
     container.appendChild(div);
   });
@@ -286,18 +288,35 @@ function renderSymbolRows() {
       <select class="color-select" onchange="updateSymbol(${index}, 'color', this.value)" style="background-color:${escapeHtml(s.color)}">
          ${generateColorOptions(SYMBOL_COLORS, s.color)}
       </select>
+      ${moveArrowsHTML('moveSymbol', index, configData.symbols.length)}
       <span class="material-icons" onclick="deleteSymbol(${index})" style="cursor:pointer; color:red;">delete</span>`;
     container.appendChild(div);
   });
+}
+
+// Up/down arrows to reorder a config list (order is saved with the config and
+// used by the structure dropdowns and the sidebar's symbol list)
+function moveArrowsHTML(fn, index, count) {
+  const arrow = (dir, icon, disabled) =>
+    `<span class="material-icons move-arrow${disabled ? ' disabled' : ''}" ${disabled ? '' : `onclick="${fn}(${index}, ${dir})"`} title="Move ${dir < 0 ? 'up' : 'down'}">${icon}</span>`;
+  return `<span class="move-arrows">${arrow(-1, 'arrow_upward', index === 0)}${arrow(1, 'arrow_downward', index === count - 1)}</span>`;
+}
+function moveInList(list, idx, dir) {
+  const to = idx + dir;
+  if (to < 0 || to >= list.length) return false;
+  [list[idx], list[to]] = [list[to], list[idx]];
+  return true;
 }
 
 // Config Helpers
 function addStructureRow() { configData.structures.push({ name: '', color: '#000000' }); renderStructureRows(); refreshEditorStructures(); }
 function updateStructure(idx, f, v) { configData.structures[idx][f] = v; renderStructureRows(); refreshEditorStructures(); }
 function deleteStructure(idx) { configData.structures.splice(idx, 1); renderStructureRows(); refreshEditorStructures(); }
-function addSymbolRow() { configData.symbols.push({ symbol: '', meaning: '', color: '#FFFFFF' }); renderSymbolRows(); }
-function updateSymbol(idx, f, v) { configData.symbols[idx][f] = v; renderSymbolRows(); }
-function deleteSymbol(idx) { configData.symbols.splice(idx, 1); renderSymbolRows(); }
+function moveStructure(idx, dir) { if (moveInList(configData.structures, idx, dir)) { renderStructureRows(); refreshEditorStructures(); } }
+function addSymbolRow() { configData.symbols.push({ symbol: '', meaning: '', color: '#FFFFFF' }); renderSymbolRows(); populateSidebarLists(); }
+function updateSymbol(idx, f, v) { configData.symbols[idx][f] = v; renderSymbolRows(); populateSidebarLists(); }
+function deleteSymbol(idx) { configData.symbols.splice(idx, 1); renderSymbolRows(); populateSidebarLists(); }
+function moveSymbol(idx, dir) { if (moveInList(configData.symbols, idx, dir)) { renderSymbolRows(); populateSidebarLists(); } }
 
 function generateColorOptions(palette, selectedColor) {
   return palette.map(c => `<option value="${c.hex}" ${c.hex === selectedColor ? 'selected' : ''} style="background-color:${c.hex}">${c.name}</option>`).join('');

@@ -4,6 +4,16 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 21
+
+- **Preview button** next to "Download PDF": builds the PDF and shows its
+  pages in a window, rendered from the PDF file itself with pdf.js
+  (bundled in `js/vendor/`, Apache-2.0), so it looks exactly like the
+  download. "Download PDF" in the preview saves that very file.
+- **Reorder symbols and structures** in Configure with up/down arrows. The
+  sidebar's symbol list and the structure dropdowns follow the order right
+  away; "Save Configuration" keeps it, Close without saving reverts it.
+
 ## Build 20
 
 - Background color selector now offers both shades of every palette color:

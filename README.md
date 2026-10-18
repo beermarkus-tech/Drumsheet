@@ -19,7 +19,8 @@ Google Sheet (see `legacy-gas/` for the original source).
   update, and only if it differs from what was last saved. There is no
   manual save button (Ctrl+S forces an immediate save).
 - `js/print.js` draws the A4 PDF as vector graphics with the bundled
-  `js/vendor/jspdf.umd.min.js` (jsPDF, MIT licensed).
+  `js/vendor/jspdf.umd.min.js` (jsPDF, MIT licensed). The preview renders
+  that same PDF with `js/vendor/pdf.min.js` (pdf.js, Apache-2.0).
 - `manifest.json` + `sw.js` make it installable and give it an offline app
   shell (the UI loads with no connection; editing songs still needs Firestore).
 - Firestore layout:

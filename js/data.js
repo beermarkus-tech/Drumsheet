@@ -139,7 +139,7 @@ async function closeEditor() {
   clearSelection();
   document.getElementById('rows-container').innerHTML = '';
   resetHistory();
-  ['editor-view', 'cellPopup', 'save-status', 'printBtn'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  ['editor-view', 'cellPopup', 'save-status', 'printBtn', 'previewBtn'].forEach(id => { document.getElementById(id).style.display = 'none'; });
 }
 
 async function loadSelectedSong(id) {
@@ -164,6 +164,7 @@ function loadEditor(songData) {
   document.getElementById('editor-view').style.display = 'flex';
   document.getElementById('save-status').style.display = 'flex';
   document.getElementById('printBtn').style.display = 'flex';
+  document.getElementById('previewBtn').style.display = 'flex';
 
   document.getElementById('cellPopup').style.display = 'flex';
   clearSelection();

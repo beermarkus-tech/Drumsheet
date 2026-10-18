@@ -400,3 +400,62 @@ async function downloadPdf() {
     btn.innerHTML = originalHTML;
   }
 }
+
+// --- PREVIEW ---
+// Builds exactly the same PDF as the download and renders that file's pages
+// with pdf.js (vendored), so the preview is the PDF itself. (Android browsers
+// can't show a PDF inline, hence no <iframe>.)
+let previewedPdf = null;
+
+async function previewPdf() {
+  const btn = document.getElementById('previewBtn');
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-icons">hourglass_empty</span> Preparing…';
+  const pages = document.getElementById('preview-pages');
+  try {
+    const { pdf, meta } = await buildPdf();
+    previewedPdf = { pdf, meta };
+    document.getElementById('preview-title').textContent = pdfFileName(meta);
+    pages.innerHTML = '<div class="preview-status">Rendering…</div>';
+    document.getElementById('pdfPreviewModal').style.display = 'flex';
+
+    if (!window.pdfjsLib) {
+      await loadScript('js/vendor/pdf.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/vendor/pdf.worker.min.js';
+    }
+    const doc = await window.pdfjsLib.getDocument({ data: pdf.output('arraybuffer') }).promise;
+    pages.innerHTML = '';
+    const cssWidth = Math.min(pages.clientWidth - 32, 900);
+    const dpr = window.devicePixelRatio || 1;
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n);
+      const scale = cssWidth / page.getViewport({ scale: 1 }).width;
+      const viewport = page.getViewport({ scale: scale * dpr });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = cssWidth + 'px';
+      pages.appendChild(canvas);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    }
+  } catch (e) {
+    console.error(e);
+    pages.innerHTML = '';
+    closePdfPreview();
+    alert('Could not create the preview: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+  }
+}
+
+function downloadPreviewedPdf() {
+  if (previewedPdf) previewedPdf.pdf.save(pdfFileName(previewedPdf.meta));
+}
+
+function closePdfPreview() {
+  document.getElementById('pdfPreviewModal').style.display = 'none';
+  document.getElementById('preview-pages').innerHTML = '';
+  previewedPdf = null;
+}
