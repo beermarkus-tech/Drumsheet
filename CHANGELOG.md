@@ -4,6 +4,21 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 09
+
+- Sidebar: the Symbol and Color lists are always the same height, and the
+  "Insert Symbol / Color" section stretches to fill all spare sidebar
+  height (min. 150px; the sidebar scrolls on very short screens). A
+  leftover 150px height cap on the symbol list made it shorter before.
+- Print sheet grid lines and borders now match the screen: each bar edged
+  in black (3px, one shared line between bar 1 and 2), dark-grey
+  quarter-note lines, light-grey e/&/a lines, always-visible 16th ruler
+  (also through merged cells), light-grey split divider, dark-grey row
+  lines, light-grey Structure/Lyrics column lines. Header is the full
+  "1 e & a" count. Fixes missing lines in merged cells and doubled
+  cell/table borders. Colors are read from the editor's `--line-*`
+  variables. Merged Structure/Lyrics boxes unchanged.
+
 ## Build 08
 
 - **Autosave replaces manual saving.** The "Save Song" and "Update Info"
@@ -107,7 +122,6 @@ data migrated into Firestore.
   consolidated with the per-bar subdivision setting in the context menu.
 - Settings-modal tab for customizing the three grid line tints
   (`--line-strong`/`--line-dark`/`--line-light`) directly in the app.
-- Bring the three-tier grid line system to the print stylesheet.
 - Delete song, duplicate/"Save As", search in Load Song list.
 - Revision snapshots for autosave (e.g. `songs/{id}/revisions` on open and
   every ~10 min) so a bad edit can be rolled back.

@@ -25,25 +25,28 @@ function printSheet() {
           text: lyricsInput.value,
           color: lyricsInput.style.color
       },
-      bar1: bar1.outerHTML,
-      bar2: bar2.outerHTML
+      bar1: bar1.outerHTML.replace(/ cell-selected/g, ''),
+      bar2: bar2.outerHTML.replace(/ cell-selected/g, '')
     });
   });
 
   // 3. GENERATE HEADER ROW
-  function getHeaderBarHTML(barNum) {
+  function getHeaderBarHTML() {
+      const counts = ['1', 'e', '&', 'a'];
       let cells = '';
-      // 8th note labels
-      const labels = ['1','-','2','-','3','-','4','-'];
-
-      for(let i=0; i<8; i++) {
-         let borderClass = '';
-         if ((i+1) % 2 === 0 && i < 7) borderClass = 'border-dark';
-
-         cells += `<div class="grid-cell header-cell ${borderClass}">${labels[i]}</div>`;
+      for (let i = 0; i < 16; i++) {
+         const minor = i % 4 !== 0;
+         cells += `<div class="grid-cell header-cell${minor ? ' minor' : ''}" style="--slots:1;">${minor ? counts[i % 4] : (i / 4 + 1)}</div>`;
       }
-      return `<div class="bar-container header-container" data-subd="8">${cells}</div>`;
+      return `<div class="bar-container header-container">${cells}${generateBarGridlines()}</div>`;
   }
+
+  // Use the editor's grid line colors so the sheet matches the screen
+  const rootStyle = getComputedStyle(document.documentElement);
+  const lineVar = (name, fallback) => rootStyle.getPropertyValue(name).trim() || fallback;
+  const LINE_STRONG = lineVar('--line-strong', '#000000');
+  const LINE_DARK = lineVar('--line-dark', '#555555');
+  const LINE_LIGHT = lineVar('--line-light', '#bbbbbb');
 
   // 4. CALCULATE ROWSPANS
   if (rawRows.length > 0) {
@@ -115,52 +118,59 @@ function printSheet() {
         .song-meta { margin-top: 5px; font-size: 14px; font-weight: bold; color: #333; }
 
         /* --- TABLE LAYOUT --- */
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 2px solid #000; }
+        /* Lines mirror the editor: rows are separated by dark grey, the Structure
+           and Lyrics columns by light grey, each bar is edged in black (3px, shared
+           between bar 1 and 2), quarter-note lines are dark grey and e/&/a lines
+           light grey. border-collapse merges touching borders into one line (the
+           wider one wins), so nothing is drawn twice. Grid cells themselves have
+           no borders; the 16th ruler is an overlay, like on screen. */
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid ${LINE_DARK}; }
 
         col.c-struct { width: 10%; }
         col.c-lyrics { width: 40%; }
         col.c-bar    { width: 25%; }
 
-        tr { border-bottom: 1px solid #bbb; height: 28px; }
+        tr { height: 28px; }
 
         /* --- CELLS --- */
+        th, td { padding: 0; vertical-align: middle; border: 1px solid ${LINE_DARK}; }
         th {
-          background: #ddd; border: 1px solid #000; padding: 4px;
+          background: #ddd; padding: 4px;
           font-size: 11px; text-transform: uppercase; font-weight: bold;
         }
-
-        td { border-right: 1px solid #000; vertical-align: middle; padding: 0; }
+        .th-struct, .td-struct, .th-lyrics, .td-lyrics { border-right: 1px solid #ccc; }
+        .th-bar, .td-grid { border-left: 3px solid ${LINE_STRONG}; border-right: 3px solid ${LINE_STRONG}; }
 
         .td-struct { text-align: center; font-weight: bold; font-size: 12px; padding: 2px; background:#fff; }
         .td-lyrics { padding: 0 5px; font-size: 12px; font-style: italic; white-space: nowrap; overflow: hidden; background:#fff; }
-        .td-grid { border-right: 1px solid #000; background: #fff; }
+        .td-grid { background: #fff; }
 
-        /* --- GRID INTERNALS (CRITICAL FIXES) --- */
+        /* --- GRID INTERNALS --- */
+        .bar-container { display: flex; position: relative; width: 100%; height: 28px; }
+        .bar-container.header-container { height: 14px; background: #e0e0e0; }
+        .bar-container.repeat-mode { opacity: 0.4; filter: grayscale(100%); }
 
-        .bar-container {
-          display: flex !important;
-          width: 100% !important;
-          height: 100% !important;
-          min-height: 28px; /* Match tr height */
-        }
-        .bar-container.header-container { min-height: 14px; }
-        .bar-container.repeat-mode { opacity: 0.4 !important; filter: grayscale(100%) !important; }
-
+        /* Cells share the bar width in proportion to how many 16ths they span */
         .grid-cell {
-          display: flex !important;
-          flex: 1 1 0px !important;
-          justify-content: center;
-          align-items: center;
-          border-right: 1px solid #bbb !important;
-          font-size: 12px !important;
-          font-weight: bold;
-          box-sizing: border-box !important;
+          display: flex; justify-content: center; align-items: center;
+          flex: var(--slots, 1) 1 0px; min-width: 0;
+          font-size: 12px; font-weight: bold;
         }
-        .grid-cell:last-child { border-right: none !important; }
-        .grid-cell.border-dark { border-right: 1px solid #999 !important; }
 
-        /* Header Styling */
-        .header-cell { background: #e0e0e0; font-size: 9px; color: #333; }
+        /* Always-visible 16th ruler (same markup as the editor) */
+        .bar-gridlines { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 2; }
+        .grid-tick { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid ${LINE_LIGHT}; }
+        .grid-tick.strong { border-left: 2px solid ${LINE_DARK}; }
+
+        /* Header count: 1/2/3/4 bold, e/&/a regular */
+        .header-cell { font-size: 9px; color: #333; }
+        .header-cell.minor { font-weight: normal; }
+
+        /* --- SPLIT BARS --- */
+        .bar-container.split-mode { flex-direction: column; }
+        .sub-line { display: flex; flex: 1; width: 100%; min-height: 0; }
+        .sub-line.upper { border-bottom: 1px solid ${LINE_LIGHT}; }
+        .sub-line .grid-cell { font-size: 10px; }
 
         /* --- PRINT MEDIA (Standard A4) --- */
         @media print {
@@ -168,12 +178,6 @@ function printSheet() {
           .sheet { width: 100%; max-width: none; box-shadow: none; padding: 0; margin: 0; }
           tr { break-inside: avoid; }
         }
-
-        /* --- SPLIT BARS --- */
-        .bar-container.split-mode { flex-direction: column !important; }
-        .sub-line { display: flex; flex: 1; width: 100%; }
-        .sub-line.upper { border-bottom: 1px solid #bbb; }
-        .sub-line .grid-cell { border-bottom: none !important; }
       </style>
     </head>
     <body>
@@ -192,14 +196,14 @@ function printSheet() {
             </colgroup>
             <thead>
               <tr style="height: 14px;">
-                <th rowspan="2" style="border-bottom: 1px solid #000;">Structure</th>
-                <th rowspan="2" style="border-bottom: 1px solid #000;">Lyrics</th>
-                <th>Bar 1</th>
-                <th>Bar 2</th>
+                <th rowspan="2" class="th-struct">Structure</th>
+                <th rowspan="2" class="th-lyrics">Lyrics</th>
+                <th class="th-bar">Bar 1</th>
+                <th class="th-bar">Bar 2</th>
               </tr>
               <tr style="height: 14px;">
-                  <td class="td-grid" style="border-bottom: 1px solid #000;">${getHeaderBarHTML(1)}</td>
-                  <td class="td-grid" style="border-bottom: 1px solid #000;">${getHeaderBarHTML(2)}</td>
+                  <td class="td-grid">${getHeaderBarHTML()}</td>
+                  <td class="td-grid">${getHeaderBarHTML()}</td>
               </tr>
             </thead>
             <tbody>
