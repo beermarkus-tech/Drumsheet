@@ -2,6 +2,19 @@
 let configData = { structures: [], symbols: [] };
 let currentSongMeta = {};
 
+// Escape user/stored text before interpolating it into an innerHTML template, so
+// quotes, '<' and '&' in lyrics, titles, symbols etc. show up literally instead of
+// truncating attribute values or being parsed as markup.
+function escapeHtml(value) {
+  if (value === undefined || value === null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const STRUCTURE_COLORS = [
   { name: 'Black', hex: '#000000' }, { name: 'Blue', hex: '#0000FF' },
   { name: 'Red', hex: '#FF0000' }, { name: 'Dark Green', hex: '#006400' }, { name: 'Magenta', hex: '#FF00FF' }
@@ -132,8 +145,8 @@ function renderStructureRows() {
     const div = document.createElement('div');
     div.className = 'config-row';
     div.innerHTML = `
-      <input type="text" placeholder="Name" value="${s.name}" onchange="updateStructure(${index}, 'name', this.value)">
-      <select class="color-select" onchange="updateStructure(${index}, 'color', this.value)" style="background-color:${s.color}; color:${getTextColorForBg(s.color)}">
+      <input type="text" placeholder="Name" value="${escapeHtml(s.name)}" onchange="updateStructure(${index}, 'name', this.value)">
+      <select class="color-select" onchange="updateStructure(${index}, 'color', this.value)" style="background-color:${escapeHtml(s.color)}; color:${getTextColorForBg(s.color)}">
         ${generateColorOptions(STRUCTURE_COLORS, s.color)}
       </select>
       <span class="material-icons" onclick="deleteStructure(${index})" style="cursor:pointer; color:red;">delete</span>`;
@@ -148,9 +161,9 @@ function renderSymbolRows() {
     const div = document.createElement('div');
     div.className = 'config-row';
     div.innerHTML = `
-      <input type="text" placeholder="Sym" value="${s.symbol}" style="max-width:50px" onchange="updateSymbol(${index}, 'symbol', this.value)">
-      <input type="text" placeholder="Meaning" value="${s.meaning}" onchange="updateSymbol(${index}, 'meaning', this.value)">
-      <select class="color-select" onchange="updateSymbol(${index}, 'color', this.value)" style="background-color:${s.color}">
+      <input type="text" placeholder="Sym" value="${escapeHtml(s.symbol)}" style="max-width:50px" onchange="updateSymbol(${index}, 'symbol', this.value)">
+      <input type="text" placeholder="Meaning" value="${escapeHtml(s.meaning)}" onchange="updateSymbol(${index}, 'meaning', this.value)">
+      <select class="color-select" onchange="updateSymbol(${index}, 'color', this.value)" style="background-color:${escapeHtml(s.color)}">
          ${generateColorOptions(SYMBOL_COLORS, s.color)}
       </select>
       <span class="material-icons" onclick="deleteSymbol(${index})" style="cursor:pointer; color:red;">delete</span>`;

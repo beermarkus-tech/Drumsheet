@@ -85,7 +85,7 @@ function printSheet() {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>${meta.title}</title>
+      <title>${escapeHtml(meta.title)}</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -179,8 +179,8 @@ function printSheet() {
     <body>
       <div class="sheet">
           <div class="song-header">
-              <div class="song-title">${meta.title}</div>
-              <div class="song-meta">${meta.band} &nbsp;|&nbsp; BPM: ${meta.bpm}</div>
+              <div class="song-title">${escapeHtml(meta.title)}</div>
+              <div class="song-meta">${escapeHtml(meta.band)} &nbsp;|&nbsp; BPM: ${escapeHtml(meta.bpm)}</div>
           </div>
 
           <table>
@@ -206,12 +206,12 @@ function printSheet() {
               ${rawRows.map(row => {
                 let structTd = '';
                 if (row.structSpan > 0) {
-                   structTd = `<td class="td-struct" rowspan="${row.structSpan}" style="color:${row.struct.color}">${row.struct.text === '-' ? '' : row.struct.text}</td>`;
+                   structTd = `<td class="td-struct" rowspan="${row.structSpan}" style="color:${escapeHtml(row.struct.color)}">${row.struct.text === '-' ? '' : escapeHtml(row.struct.text)}</td>`;
                 }
 
                 let lyricsTd = '';
                 if (row.lyricsSpan > 0) {
-                   lyricsTd = `<td class="td-lyrics" rowspan="${row.lyricsSpan}" style="color:${row.lyrics.color}">${row.lyrics.text}</td>`;
+                   lyricsTd = `<td class="td-lyrics" rowspan="${row.lyricsSpan}" style="color:${escapeHtml(row.lyrics.color)}">${escapeHtml(row.lyrics.text)}</td>`;
                 }
 
                 return `

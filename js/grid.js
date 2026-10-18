@@ -15,19 +15,19 @@ window.addEditorRow = function (data = { structure: '', lyrics: '', gridData: '{
       configData.structures.forEach(s => {
         const selected = s.name === data.structure ? 'selected' : '';
         if (selected) currentColor = s.color;
-        structOptions += `<option value="${s.name}" style="color:${s.color}" ${selected}>${s.name}</option>`;
+        structOptions += `<option value="${escapeHtml(s.name)}" style="color:${escapeHtml(s.color)}" ${selected}>${escapeHtml(s.name)}</option>`;
       });
   }
 
   div.innerHTML = `
     <div class="col-struct">
-        <select class="struct-select" style="color:${currentColor}" onchange="onStructureChange(this)">
+        <select class="struct-select" style="color:${escapeHtml(currentColor)}" onchange="onStructureChange(this)">
           ${structOptions}
         </select>
     </div>
 
     <div class="col-lyrics">
-        <input type="text" class="lyrics-input" value="${data.lyrics}" style="color:${currentColor}" placeholder="Lyrics...">
+        <input type="text" class="lyrics-input" value="${escapeHtml(data.lyrics)}" style="color:${escapeHtml(currentColor)}" placeholder="Lyrics...">
     </div>
 
     <div class="col-grid">
@@ -74,9 +74,9 @@ window.generateBarHTML = function (barNum, gridObj) {
           if (endSlot % 4 === 0 && endSlot < 16) cssClass += ' border-dark';
 
           let style = `--slots:${slots};`;
-          if (cellData.color) style += ` background-color:${cellData.color};`;
+          if (cellData.color) style += ` background-color:${escapeHtml(cellData.color)};`;
 
-          let content = cellData.sym || cellData.text || '';
+          let content = escapeHtml(cellData.sym || cellData.text || '');
           html += `<div class="${cssClass}" id="${cellId}" style="${style}" onclick="onCellClick(event, this)">${content}</div>`;
       }
       return html;
@@ -221,7 +221,7 @@ window.onCellClick = function (event, cell) {
           const row = document.createElement('div');
           row.className = 'symbol-row';
           row.onclick = () => window.selectSymbol(s);
-          row.innerHTML = `<div class="symbol-preview" style="background-color:${s.color}">${s.symbol}</div><div class="symbol-meaning">${s.meaning}</div>`;
+          row.innerHTML = `<div class="symbol-preview" style="background-color:${escapeHtml(s.color)}">${escapeHtml(s.symbol)}</div><div class="symbol-meaning">${escapeHtml(s.meaning)}</div>`;
           symContainer.appendChild(row);
       });
   }

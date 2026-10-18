@@ -43,7 +43,7 @@ async function loadSongList() {
   tbody.innerHTML = '';
   list.forEach(song => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${song.band}</td><td>${song.title}</td>`;
+    tr.innerHTML = `<td>${escapeHtml(song.band)}</td><td>${escapeHtml(song.title)}</td>`;
     tr.onclick = () => loadSelectedSong(song.id);
     tbody.appendChild(tr);
   });

@@ -4,6 +4,19 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 06
+
+- Fix: text containing quotes, `<`, `>` or `&` was corrupted on screen and,
+  for lyrics/structures/symbols, on save. E.g. lyrics `He said "go"` showed
+  and saved as `He said `, a structure named `Chorus "A"` saved as
+  `Chorus `, and a cell symbol like `<o>` vanished. All stored text is now
+  HTML-escaped (`escapeHtml()` in `js/main.js`) wherever it's inserted
+  into the page: editor rows, cell symbols, cell popup, song list,
+  Configure dialog, and the print sheet. Songs without such characters
+  render byte-for-byte the same as Build 05.
+- Service worker cache renamed per build (`drumsheet-shell-build-06`) so
+  installed PWAs reliably pick up new JS/CSS. Bump it with every build.
+
 ## Build 05
 
 - Thickened the black bar-boundary lines (start of bar 1, the shared
@@ -54,6 +67,10 @@ data migrated into Firestore.
 
 ## Backlog (not yet scheduled)
 
+- **Close the database (required before sharing the URL).** Firestore rules
+  are currently fully open: anyone with the URL can read, overwrite or
+  delete every song. Add sign-in (e.g. Google via Firebase Auth) and
+  restrict rules to allowed user(s).
 - 8th/16th display toggle: will change the header and gridline visibility,
   consolidated with the per-bar subdivision setting in the context menu.
 - Settings-modal tab for customizing the three grid line tints
