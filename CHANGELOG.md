@@ -4,6 +4,16 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 14
+
+- The Bars cell is now a button that opens a small "Bars" dialog with two
+  fields: **Multiplier** (–, 2x, 3x, 4x, 5x, 6x) and **Bars** (-, 2, 4, 6,
+  8), with a preview. OK writes e.g. "4" or "2x4" into the cell; Cancel
+  changes nothing. The multiplier is display-only: grouping still uses
+  the bar count (2x4 covers 2 rows, like 4). It needs a bar count, and
+  clearing the bars clears it too. Saved per row as `barsMultiplier`; the
+  PDF shows the same label and widens the Bars column if needed.
+
 ## Build 13
 
 - Fix: sorting in the Load Song list works. Tap "Band Name" or "Song

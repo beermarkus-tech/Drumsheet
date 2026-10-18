@@ -232,7 +232,8 @@ function collectRows() {
       rows.push({
           structure: row.querySelector('.struct-select').value,
           lyrics: row.querySelector('.lyrics-input').value,
-          bars: row.querySelector('.bars-select').value,
+          bars: row.querySelector('.bars-btn').dataset.bars,
+          barsMultiplier: row.querySelector('.bars-btn').dataset.mult,
           gridData: JSON.stringify(gridData)
       });
   });

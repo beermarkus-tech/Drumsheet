@@ -7,7 +7,13 @@ let clipboardBar = null; // Holds the copied bar data
 // group never crosses into a new section and stops at the end of the song.
 // Only the first row carries the value; covered rows are disabled in the editor
 // (no merged box on screen). The PDF draws the group as one merged box.
-const BAR_GROUP_SIZES = ['', '2', '4', '6', '8'];
+// An optional multiplier (2x-6x) is display-only, e.g. "2x4"; grouping always
+// uses the bar count. Both are picked in #barsModal.
+
+function barsLabel(bars, mult) {
+  if (!bars) return '';
+  return mult ? `${mult}x${bars}` : String(bars);
+}
 
 // A new section starts where a (non-empty) structure differs from the last
 // non-empty structure above it (rows without a structure don't end a section)
@@ -38,21 +44,59 @@ function computeBarGroups(rows) {
   return out;
 }
 
+// The Bars cell is a button holding data-bars / data-mult; it opens #barsModal
+function setBarsButton(btn, bars, mult) {
+  btn.dataset.bars = bars || '';
+  btn.dataset.mult = bars ? (mult || '') : '';
+  const label = barsLabel(btn.dataset.bars, btn.dataset.mult);
+  if (btn.textContent !== (label || '-')) btn.textContent = label || '-';
+}
+
 window.refreshBarGroups = function () {
   const rows = [...document.querySelectorAll('#rows-container .editor-row')];
   const groups = computeBarGroups(rows.map(r => ({
-    bars: r.querySelector('.bars-select').value,
+    bars: r.querySelector('.bars-btn').dataset.bars,
     struct: r.querySelector('.struct-select').value
   })));
   let cleared = false;
   rows.forEach((row, i) => {
-    const select = row.querySelector('.bars-select');
+    const btn = row.querySelector('.bars-btn');
     const covered = groups[i].covered;
-    if (covered && select.value) { select.value = ''; cleared = true; }
-    if (select.disabled !== covered) select.disabled = covered;
+    if (covered && btn.dataset.bars) { setBarsButton(btn, '', ''); cleared = true; }
+    if (btn.disabled !== covered) btn.disabled = covered;
     row.classList.toggle('bars-covered', covered);
   });
   if (cleared) window.markUnsaved();
+};
+
+// --- BARS MODAL ---
+let barsModalTarget = null;
+
+window.openBarsModal = function (btn) {
+  barsModalTarget = btn;
+  document.getElementById('bars-count').value = btn.dataset.bars || '';
+  document.getElementById('bars-mult').value = btn.dataset.mult || '';
+  updateBarsModalPreview();
+  document.getElementById('barsModal').style.display = 'flex';
+};
+
+window.updateBarsModalPreview = function () {
+  const bars = document.getElementById('bars-count').value;
+  const mult = document.getElementById('bars-mult');
+  mult.disabled = !bars;                       // a multiplier needs a bar count
+  const label = barsLabel(bars, mult.value);
+  document.getElementById('bars-preview').textContent = label || '(empty)';
+};
+
+window.applyBarsModal = function () {
+  if (barsModalTarget && barsModalTarget.isConnected) {
+    const bars = document.getElementById('bars-count').value;
+    setBarsButton(barsModalTarget, bars, document.getElementById('bars-mult').value);
+    window.refreshBarGroups();
+    window.markUnsaved();
+  }
+  barsModalTarget = null;
+  closeModal('barsModal');
 };
 
 // --- ROW GENERATION ---
@@ -90,9 +134,8 @@ window.addEditorRow = function (data = { structure: '', lyrics: '', gridData: '{
     </div>
 
     <div class="col-bars">
-        <select class="bars-select" onchange="refreshBarGroups()" title="Bars in this group (starts here)">
-          ${BAR_GROUP_SIZES.map(n => `<option value="${n}"${String(data.bars || '') === n ? ' selected' : ''}>${n || '-'}</option>`).join('')}
-        </select>
+        <button type="button" class="bars-btn" title="Bars in this group (starts here)" onclick="openBarsModal(this)"
+          data-bars="${escapeHtml(data.bars ? data.bars : '')}" data-mult="${escapeHtml(data.bars && data.barsMultiplier ? data.barsMultiplier : '')}">${escapeHtml(barsLabel(data.bars, data.barsMultiplier) || '-')}</button>
     </div>
 
     <div class="col-grid">

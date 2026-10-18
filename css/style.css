@@ -83,12 +83,14 @@ button:hover { background: #f0f0f0; }
 
 /* COL 2b: BARS (group size; only as wide as the dropdown needs) */
 .col-bars {
-  flex: 0 0 auto; width: 52px;
+  flex: 0 0 auto; width: 56px;
   border-right: 1px solid #ccc; padding: 0 3px;
   display: flex; align-items: center; justify-content: center;
 }
-.bars-select { width: 100%; border: none; background: white; font-weight: bold; text-align: center; cursor: pointer; }
-.bars-select:disabled { background: transparent; color: transparent; cursor: default; }
+.bars-btn { width: 100%; height: 22px; padding: 0 2px; justify-content: center; border: 1px solid #e3e3e3; background: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap; }
+.bars-btn:disabled { background: transparent; border-color: transparent; color: transparent; cursor: default; }
+.bars-modal-label { width: 90px; flex: 0 0 90px; font-weight: bold; }
+.bars-modal-preview { margin-top: 5px; color: #555; }
 .editor-row.bars-covered .col-bars { background: #f6f6f6; }
 
 /* COL 3: GRID (Auto - Shrinks/Grows based on cell count) */

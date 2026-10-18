@@ -18,7 +18,7 @@
   <div class="app-header">
     <div class="app-title">DRUMSHEET 🥁</div>
     <div class="app-header-right">
-      <div class="app-version">Build 13</div>
+      <div class="app-version">Build 14</div>
       <button id="reloadBtn" class="reload-btn" onclick="reloadApp()" title="Load the latest build"><span class="material-icons">refresh</span> Reload</button>
     </div>
   </div>
@@ -162,6 +162,34 @@
       <div class="modal-footer">
         <button onclick="closeModal('newSongModal')">Cancel</button>
         <button class="primary" onclick="createNewSong()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="barsModal" class="modal-overlay">
+    <div class="modal" style="width: 340px;">
+      <div class="modal-header">Bars</div>
+      <div class="modal-body">
+        <div class="config-row">
+          <label for="bars-mult" class="bars-modal-label">Multiplier</label>
+          <select id="bars-mult" onchange="updateBarsModalPreview()">
+            <option value="">–</option>
+            <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
+            <option value="5">5x</option><option value="6">6x</option>
+          </select>
+        </div>
+        <div class="config-row">
+          <label for="bars-count" class="bars-modal-label">Bars</label>
+          <select id="bars-count" onchange="updateBarsModalPreview()">
+            <option value="">-</option>
+            <option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8">8</option>
+          </select>
+        </div>
+        <div class="bars-modal-preview">Shows as: <b id="bars-preview"></b></div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeModal('barsModal')">Cancel</button>
+        <button class="primary" onclick="applyBarsModal()">OK</button>
       </div>
     </div>
   </div>

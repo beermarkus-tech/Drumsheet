@@ -119,7 +119,8 @@ function gatherSheet() {
     rows.push({
       struct: { text: structSelect.value, color: structSelect.style.color },
       lyrics: { text: lyricsInput.value, color: lyricsInput.style.color },
-      bars: row.querySelector('.bars-select').value,
+      bars: row.querySelector('.bars-btn').dataset.bars,
+      barsMultiplier: row.querySelector('.bars-btn').dataset.mult,
       bar1: barModel(row.querySelector('#bar-1')),
       bar2: barModel(row.querySelector('#bar-2'))
     });
@@ -275,7 +276,7 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
     }
     if (sp.bars) {
       const h = sp.bars * PDF.rowH;
-      const value = row.groupCovered ? '' : (row.groupSpan ? row.bars : '');
+      const value = row.groupSpan ? barsLabel(row.bars, row.barsMultiplier) : '';
       if (value) text(value, L.xBars + L.barsW / 2, y0 + h / 2, { align: 'center' }, 'bold', 9, [0, 0, 0]);
       addLine('dark', L.xBars, y0 + h, L.xBar1, y0 + h, L.dark, PDF.thin);
     }
@@ -325,7 +326,7 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
   texts.forEach(draw => draw());
 }
 
-function pdfLayout(pdf) {
+function pdfLayout(pdf, rows = []) {
   const rootStyle = getComputedStyle(document.documentElement);
   const lineVar = (name, fallback) => rgbOf(rootStyle.getPropertyValue(name).trim(), fallback);
 
@@ -335,7 +336,11 @@ function pdfLayout(pdf) {
   const barW = tableW * 0.25;
   // "Bars" is only as wide as its header label needs
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.5);
-  const barsW = pdf.getTextWidth('BARS') + 2.4;
+  // and its widest value (e.g. "6x8")
+  let barsW = pdf.getTextWidth('BARS');
+  pdf.setFontSize(9);
+  rows.forEach(r => { if (r.groupSpan) barsW = Math.max(barsW, pdf.getTextWidth(barsLabel(r.bars, r.barsMultiplier))); });
+  barsW += 2.4;
   const lyricsW = tableW - structW - barsW - 2 * barW;
 
   const xStruct = margin;
@@ -362,7 +367,7 @@ async function buildPdf() {
   const { meta, rows } = gatherSheet();
   const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   pdf.setProperties({ title: `${meta.title} – ${meta.band}`, creator: 'Drumsheet' });
-  const L = pdfLayout(pdf);
+  const L = pdfLayout(pdf, rows);
 
   const tableTop = PDF.margin + 12.6 + 4 + PDF.head1H + PDF.head2H;
   const rowsPerPage = Math.floor((PDF.pageH - PDF.margin - tableTop) / PDF.rowH);
