@@ -17,7 +17,7 @@
 
   <div class="app-header">
     <div class="app-title">DRUMSHEET 🥁</div>
-    <div class="app-version">Build 06</div>
+    <div class="app-version">Build 07</div>
   </div>
 
   <div class="nav-bar">
@@ -30,6 +30,7 @@
     <button id="saveSongBtn" onclick="saveCurrentSong()" style="margin-left:auto; display:none;" class="primary"><span class="material-icons">save</span> Save Song</button>
   </div>
 
+  <div class="workspace">
   <div id="editor-view">
     <div class="song-info-bar" style="align-items: center; gap: 10px;">
       <label style="font-weight:bold;">Title:</label>
@@ -70,6 +71,51 @@
 
     <div style="padding: 10px 20px; background: #f9f9f9; border-top: 1px solid #ddd;">
        <button onclick="addEditorRow()" style="width:100%; justify-content:center;">+ Add Line</button>
+    </div>
+  </div>
+
+    <div id="cellPopup" class="edit-sidebar no-selection" style="display:none;">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Edit Cell</div>
+        <div id="sidebar-selection" class="sidebar-selection">Click a cell to edit it</div>
+      </div>
+
+      <div class="sidebar-controls">
+
+        <div class="popup-section-title">Cell Text</div>
+        <input id="popup-comment" class="cell-comment-input" placeholder="Type & Enter..." onkeydown="if(event.key === 'Enter') applyText()">
+
+        <div class="popup-section-title" style="margin-top:10px;">Insert Symbol / Color</div>
+        <div class="popup-content-row" id="popup-split-wrapper">
+          <div id="popup-symbols" class="symbol-list"></div>
+          <div id="popup-colors" class="color-list"></div>
+        </div>
+
+        <div class="popup-section-title" style="margin-top:10px;">Bar Subdivision</div>
+        <div class="subd-row">
+          <div class="subd-btn" data-val="16" onclick="changeSubdivision(16)">1/16</div>
+          <div class="subd-btn" data-val="8" onclick="changeSubdivision(8)">1/8</div>
+          <div class="subd-btn" data-val="4" onclick="changeSubdivision(4)">1/4</div>
+          <div class="subd-btn" data-val="2" onclick="changeSubdivision(2)">1/2</div>
+          <div class="subd-btn" data-val="1" onclick="changeSubdivision(1)">Full</div>
+        </div>
+
+        <div style="border-top:1px solid #eee; margin:10px 0;"></div>
+
+        <div class="popup-actions">
+          <button class="popup-btn" onclick="copyBar()">Copy</button>
+          <button class="popup-btn" onclick="pasteBar()">Paste</button>
+          <button class="popup-btn" onclick="pasteRepeat()">Paste (Ghost)</button>
+        </div>
+        <div class="popup-actions">
+           <button class="popup-btn" onclick="toggleSplit()">Split/Merge</button>
+        </div>
+
+        <div class="popup-actions">
+          <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearCell()">Clear Cell</button>
+          <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearBar()">Clear Bar</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -136,40 +182,6 @@
       <div class="modal-footer">
         <button onclick="closeModal('loadSongModal')">Cancel</button>
       </div>
-    </div>
-  </div>
-
-  <div id="cellPopup" style="display:none;">
-
-    <div class="popup-section-title">Cell Text</div>
-    <input id="popup-comment" class="cell-comment-input" placeholder="Type & Enter..." onkeydown="if(event.key === 'Enter') applyText()">
-
-    <div class="popup-section-title" style="margin-top:10px;">Insert Symbol</div>
-    <div id="popup-symbols" class="symbol-list"></div>
-
-    <div class="popup-section-title" style="margin-top:10px;">Bar Subdivision</div>
-    <div class="subd-row">
-      <div class="subd-btn" data-val="16" onclick="changeSubdivision(16)">1/16</div>
-      <div class="subd-btn" data-val="8" onclick="changeSubdivision(8)">1/8</div>
-      <div class="subd-btn" data-val="4" onclick="changeSubdivision(4)">1/4</div>
-      <div class="subd-btn" data-val="2" onclick="changeSubdivision(2)">1/2</div>
-      <div class="subd-btn" data-val="1" onclick="changeSubdivision(1)">Full</div>
-    </div>
-
-    <div style="border-top:1px solid #eee; margin:10px 0;"></div>
-
-    <div class="popup-actions">
-      <button class="popup-btn" onclick="copyBar()">Copy</button>
-      <button class="popup-btn" onclick="pasteBar()">Paste</button>
-      <button class="popup-btn" onclick="pasteRepeat()">Paste (Ghost)</button>
-    </div>
-    <div class="popup-actions">
-       <button class="popup-btn" onclick="toggleSplit()">Split/Merge</button>
-    </div>
-
-    <div class="popup-actions">
-      <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearCell()">Clear Cell</button>
-      <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearBar()">Clear Bar</button>
     </div>
   </div>
 

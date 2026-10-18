@@ -4,6 +4,21 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 07
+
+- The cell edit popup is now a permanent sidebar on the right (280px),
+  shown whenever a song is open. Click a cell to select it (blue outline);
+  the header shows which cell, e.g. "Row 3 · Bar 1 · 2&". With nothing
+  selected the controls are greyed out.
+- The selection stays put after every action, so you can apply a symbol,
+  then a color, then change the subdivision without re-clicking. Actions
+  that rebuild the bar (subdivision, split/merge, paste, clear bar) move the
+  selection to the cell now covering the same 16th position. Deleting the
+  selected row or loading another song clears it.
+- Symbol and color lists are taller (no more cramped scrolling).
+- Clicking elsewhere no longer dismisses anything; saved data and print
+  output are unchanged from Build 06.
+
 ## Build 06
 
 - Fix: text containing quotes, `<`, `>` or `&` was corrupted on screen and,

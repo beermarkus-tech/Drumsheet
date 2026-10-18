@@ -76,6 +76,9 @@ function loadEditor(songData) {
   document.getElementById('saveSongBtn').style.display = 'flex';
   document.getElementById('printBtn').style.display = 'flex';
 
+  document.getElementById('cellPopup').style.display = 'flex';
+  clearSelection();
+
   const container = document.getElementById('rows-container');
   container.innerHTML = '';
 

@@ -50,14 +50,8 @@ window.onload = function() {
       generateHeaderBeats('header-beats-2');
   }
 
-  // 2. Popup Closer
-  document.addEventListener('click', function(e) {
-    const popup = document.getElementById('cellPopup');
-    // Close if clicking outside popup AND outside grid cells
-    if (popup.style.display !== 'none' && !popup.contains(e.target) && !e.target.classList.contains('grid-cell')) {
-      closePopup();
-    }
-  });
+  // 2. Edit sidebar starts with nothing selected
+  clearSelection();
 
   // 3. Register service worker for PWA install / offline shell
   if ('serviceWorker' in navigator) {
@@ -91,7 +85,7 @@ document.addEventListener('keydown', function(e) {
       copyBar();
       // Visual feedback
       activeCell.style.outline = "2px solid blue";
-      setTimeout(() => activeCell.style.outline = "none", 200);
+      setTimeout(() => activeCell.style.outline = "", 200);
     }
   }
 

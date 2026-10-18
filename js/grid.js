@@ -177,43 +177,84 @@ window.onStructureChange = function (selectElem) {
 };
 
 window.insertRow = function (btn) { window.addEditorRow(undefined, btn.closest('.editor-row')); };
-window.deleteRow = function (btn) { btn.closest('.editor-row').remove(); };
+window.deleteRow = function (btn) { btn.closest('.editor-row').remove(); syncSelection(); };
 
-// --- POPUP LOGIC ---
+// --- EDIT SIDEBAR LOGIC ---
+// The edit panel (#cellPopup) is a permanent sidebar. Clicking a cell selects
+// it; the selection survives edits, including ones that re-render the bar
+// (subdivision, split, paste, clear bar) — see syncSelection().
+let activeRef = null; // { row, barNum, aux, idx } — where the selection lives
+
 window.onCellClick = function (event, cell) {
   event.stopPropagation();
+  selectCell(cell);
+};
+
+function selectCell(cell) {
+  if (activeCell && activeCell !== cell) activeCell.classList.remove('cell-selected');
   activeCell = cell;
+  cell.classList.add('cell-selected');
 
-  // 1. POPULATE SYMBOLS (Standard)
-  const wrapper = document.getElementById('popup-split-wrapper');
-  if (!wrapper) {
-      // If wrapper doesn't exist yet (first run), create the container structure dynamically
-      const oldContainer = document.getElementById('popup-symbols');
-      const parent = oldContainer.parentNode;
+  const bar = cell.closest('.bar-container');
+  activeRef = {
+      row: cell.closest('.editor-row'),
+      barNum: bar.id.split('-')[1],
+      aux: cell.id.startsWith('aux_'),
+      idx: parseInt(cell.id.split('_c')[1])
+  };
 
-      // Create the new layout HTML
-      const newLayout = document.createElement('div');
-      newLayout.className = 'popup-content-row';
-      newLayout.id = 'popup-split-wrapper';
+  populateSidebarLists();
 
-      // Create Left Col (Symbols)
-      const symCol = document.createElement('div');
-      symCol.className = 'symbol-list';
-      symCol.id = 'popup-symbols'; // Keep old ID for compatibility
+  // Cell text
+  document.getElementById('popup-comment').value = cell.innerText;
 
-      // Create Right Col (Colors)
-      const colCol = document.createElement('div');
-      colCol.className = 'color-list';
-      colCol.id = 'popup-colors';
+  // Highlight subdivision
+  const currentSubd = parseInt(bar.getAttribute('data-subd')) || 8;
+  document.querySelectorAll('.subd-btn').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.val) === currentSubd);
+  });
 
-      newLayout.appendChild(symCol);
-      newLayout.appendChild(colCol);
+  // Selection label, e.g. "Row 3 · Bar 1 · 2&"
+  const rowNum = [...document.querySelectorAll('#rows-container .editor-row')].indexOf(activeRef.row) + 1;
+  const COUNTS = ['', 'e', '&', 'a'];
+  const pos = activeRef.idx - 1;
+  const beat = `${Math.floor(pos / 4) + 1}${COUNTS[pos % 4]}`;
+  document.getElementById('sidebar-selection').textContent =
+      `Row ${rowNum} · Bar ${activeRef.barNum} · ${beat}${activeRef.aux ? ' (aux)' : ''}`;
 
-      // Swap old for new
-      parent.replaceChild(newLayout, oldContainer);
-  }
+  document.getElementById('cellPopup').classList.remove('no-selection');
+}
 
-  // A. Generate Symbols (Left)
+function clearSelection() {
+  if (activeCell) activeCell.classList.remove('cell-selected');
+  activeCell = null;
+  activeRef = null;
+  document.getElementById('popup-comment').value = '';
+  document.querySelectorAll('.subd-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('sidebar-selection').textContent = 'Click a cell to edit it';
+  document.getElementById('cellPopup').classList.add('no-selection');
+}
+window.clearSelection = clearSelection;
+
+// After an action, re-attach the selection: if the bar was re-rendered the old
+// cell element is gone, so pick the cell now covering the same 16th position
+// (falling back to the main lane if the aux lane no longer exists).
+function syncSelection() {
+  if (!activeCell) return;
+  if (activeCell.isConnected) { selectCell(activeCell); return; }
+  if (!activeRef || !activeRef.row.isConnected) { clearSelection(); return; }
+
+  const bar = activeRef.row.querySelector(`#bar-${activeRef.barNum}`);
+  const cells = [...bar.querySelectorAll('.grid-cell')];
+  let lane = cells.filter(c => c.id.startsWith('aux_') === activeRef.aux);
+  if (lane.length === 0) lane = cells.filter(c => !c.id.startsWith('aux_'));
+  let best = lane[0];
+  lane.forEach(c => { if (parseInt(c.id.split('_c')[1]) <= activeRef.idx) best = c; });
+  if (best) selectCell(best); else clearSelection();
+}
+
+function populateSidebarLists() {
+  // A. Symbols (left)
   const symContainer = document.getElementById('popup-symbols');
   symContainer.innerHTML = '';
   if(configData.symbols) {
@@ -226,7 +267,7 @@ window.onCellClick = function (event, cell) {
       });
   }
 
-  // B. Generate Colors (Right)
+  // B. Colors (right)
   const colContainer = document.getElementById('popup-colors');
   colContainer.innerHTML = '';
 
@@ -240,77 +281,18 @@ window.onCellClick = function (event, cell) {
   clearDiv.onclick = () => window.selectBackgroundColor('');
   colContainer.appendChild(clearDiv);
 
-  // 2. Palette Colors
+  // 2. Palette Colors (LIGHT color for backgrounds)
   if(typeof PALETTE !== 'undefined') {
       PALETTE.forEach(c => {
           const div = document.createElement('div');
           div.className = 'color-swatch';
-
-          // Use LIGHT color for background selection
           div.style.backgroundColor = c.light;
           div.title = c.name;
-
           div.onclick = () => window.selectBackgroundColor(c.light);
-
           colContainer.appendChild(div);
       });
   }
-
-  // 2. POPULATE TEXT (Standard)
-  document.getElementById('popup-comment').value = cell.innerText;
-
-  // 3. HIGHLIGHT SUBDIVISION (Standard)
-  const currentBar = cell.closest('.bar-container');
-  const currentSubd = parseInt(currentBar.getAttribute('data-subd')) || 8;
-  document.querySelectorAll('.subd-btn').forEach(btn => {
-      btn.classList.remove('active');
-      if(parseInt(btn.dataset.val) === currentSubd) btn.classList.add('active');
-  });
-
-  // 4. SHOW POPUP (Hidden first to calculate dimensions)
-  const popup = document.getElementById('cellPopup');
-  popup.style.display = 'flex';
-
-  // --- POSITIONING LOGIC ---
-
-  const currentRow = currentBar.closest('.editor-row');
-  const popupRect = popup.getBoundingClientRect();
-  const buffer = 10;
-
-  // A. DETERMINE TARGET BAR (Opposite side)
-  // If we are in Bar 1 (Left), target is Bar 2. If in Bar 2, target is Bar 1.
-  const isBar1 = currentBar.id.includes('bar-1');
-  const targetBarId = isBar1 ? '#bar-2' : '#bar-1';
-  const targetBar = currentRow.querySelector(targetBarId);
-
-  let leftPos = 0;
-  let topPos = 0;
-
-  // B. CALCULATE HORIZONTAL (Center over target bar)
-  if (targetBar) {
-      const targetRect = targetBar.getBoundingClientRect();
-      // Center of target bar - Half of popup width
-      leftPos = targetRect.left + (targetRect.width / 2) - (popupRect.width / 2);
-  } else {
-      // Fallback if bar 2 doesn't exist (rare edge case): Center screen
-      leftPos = (window.innerWidth / 2) - (popupRect.width / 2);
-  }
-
-  // C. CALCULATE VERTICAL (Center on Mouse Y)
-  topPos = event.clientY - (popupRect.height / 2);
-
-  // D. VERTICAL CLAMP (Prevent going off-screen)
-  if (topPos < buffer) {
-      topPos = buffer;
-  }
-  if (topPos + popupRect.height > window.innerHeight - buffer) {
-      topPos = window.innerHeight - popupRect.height - buffer;
-  }
-
-  // Apply
-  popup.style.left = leftPos + 'px';
-  popup.style.top = topPos + 'px';
-};
+}
 
 window.selectSymbol = function (s) {
   if(activeCell) {
@@ -463,4 +445,6 @@ window.clearBar = function () {
   window.closePopup();
 };
 
-window.closePopup = function () { document.getElementById('cellPopup').style.display = 'none'; };
+// Called after every edit action (name kept from the old floating popup).
+// The sidebar stays open; just re-sync it with the (possibly re-rendered) cell.
+window.closePopup = function () { syncSelection(); };

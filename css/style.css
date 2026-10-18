@@ -178,8 +178,28 @@ button:hover { background: #f0f0f0; }
     margin-right: -3px;
 }
 
-/* --- POPUP (Phase 4) --- */
-#cellPopup { position: fixed; z-index: 3000; background: white; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); padding: 15px; display: none; flex-direction: column; gap: 12px; width: 280px; }
+/* --- EDIT SIDEBAR (formerly the floating cell popup) --- */
+/* Editor + sidebar side by side, filling the space under the nav bars */
+.workspace { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+#editor-view { min-width: 0; }
+
+#cellPopup {
+    width: 280px; flex: 0 0 280px;
+    background: white;
+    border-left: 1px solid var(--border);
+    padding: 15px;
+    display: none; flex-direction: column; gap: 12px;
+    overflow-y: auto;
+}
+.sidebar-header { border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.sidebar-title { font-weight: bold; color: var(--primary); }
+.sidebar-selection { font-size: 0.85rem; color: #555; margin-top: 3px; }
+.sidebar-controls { display: flex; flex-direction: column; gap: 12px; }
+/* Nothing selected: controls stay visible but inert */
+#cellPopup.no-selection .sidebar-controls { opacity: 0.4; pointer-events: none; }
+
+/* Currently selected cell (inset so it doesn't change layout) */
+.grid-cell.cell-selected { box-shadow: inset 0 0 0 2px var(--accent); }
 .popup-section-title { font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 5px; font-weight: bold; letter-spacing: 0.5px; }
 .symbol-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 4px; border-radius: 4px; }
 .symbol-row { display: flex; align-items: center; gap: 10px; padding: 4px; cursor: pointer; border-radius: 4px; transition: background 0.1s; }
@@ -215,7 +235,8 @@ button:hover { background: #f0f0f0; }
     display: flex;
     gap: 8px;
     /* Fixed height is required to force scrolling inside the children */
-    height: 150px;
+    height: 260px;
+    flex-shrink: 0;
 }
 
 /* Symbol Column (Left, Wider) */
