@@ -4,6 +4,12 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 23
+
+- Removed the "Download PDF" button from the top row; the PDF is now
+  downloaded from the Preview window ("Download PDF" there saves exactly
+  the previewed file).
+
 ## Build 22
 
 - The thick section line (e.g. Verse → Chorus) is now also shown in the

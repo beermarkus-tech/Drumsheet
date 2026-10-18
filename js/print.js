@@ -384,27 +384,10 @@ async function buildPdf() {
   return { pdf, meta };
 }
 
-async function downloadPdf() {
-  const btn = document.getElementById('printBtn');
-  const originalHTML = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="material-icons">hourglass_empty</span> Creating PDF…';
-  try {
-    const { pdf, meta } = await buildPdf();
-    pdf.save(pdfFileName(meta));
-  } catch (e) {
-    console.error(e);
-    alert('Could not create the PDF: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalHTML;
-  }
-}
-
-// --- PREVIEW ---
-// Builds exactly the same PDF as the download and renders that file's pages
-// with pdf.js (vendored), so the preview is the PDF itself. (Android browsers
-// can't show a PDF inline, hence no <iframe>.)
+// --- PREVIEW (the only way to the PDF: preview, then download from there) ---
+// Builds the PDF and renders that file's pages with pdf.js (vendored), so the
+// preview is the PDF itself; its Download button saves that same file.
+// (Android browsers can't show a PDF inline, hence no <iframe>.)
 let previewedPdf = null;
 
 async function previewPdf() {
