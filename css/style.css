@@ -311,6 +311,9 @@ button:hover { background: #f0f0f0; }
 table.song-list { width: 100%; border-collapse: collapse; }
 table.song-list th { text-align: left; padding: 10px; border-bottom: 2px solid #ddd; cursor: pointer; }
 table.song-list td { padding: 10px; border-bottom: 1px solid #eee; }
+table.song-list th { user-select: none; white-space: nowrap; }
+table.song-list th .sort-icon { font-size: 14px; vertical-align: middle; color: #bbb; }
+table.song-list th.sorted .sort-icon { color: var(--accent); }
 table.song-list tr:hover { background: #f9f9f9; cursor: pointer; }
 
 /* Duplicate / delete buttons in the Load Song list */

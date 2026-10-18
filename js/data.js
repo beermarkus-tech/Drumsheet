@@ -40,10 +40,39 @@ async function loadSongList(highlightId = null) {
   const tbody = document.getElementById('song-list-body');
   tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
   await window.firebaseReady;
-  const list = await window.Firebase.listSongs();
-  songListCache = list;
+  songListCache = await window.Firebase.listSongs();
+  renderSongList(highlightId);
+}
+
+// --- SONG LIST SORTING ---
+// Click a header to sort by it, again to reverse. Ties are broken by the other
+// column. Remembered on this device.
+const SONG_SORT_KEY = 'drumsheet.songSort';
+let songSort = { field: 'band', dir: 1 };
+try { songSort = JSON.parse(localStorage.getItem(SONG_SORT_KEY)) || songSort; } catch (e) {}
+
+function sortSongList(field) {
+  songSort = { field, dir: songSort.field === field ? -songSort.dir : 1 };
+  try { localStorage.setItem(SONG_SORT_KEY, JSON.stringify(songSort)); } catch (e) {}
+  renderSongList();
+}
+
+function compareSongs(a, b) {
+  const cmp = (x, y) => String(x ?? '').localeCompare(String(y ?? ''), undefined, { sensitivity: 'base', numeric: true });
+  const other = songSort.field === 'band' ? 'title' : 'band';
+  return songSort.dir * (cmp(a[songSort.field], b[songSort.field]) || cmp(a[other], b[other]));
+}
+
+function renderSongList(highlightId = null) {
+  document.querySelectorAll('#loadSongModal th[data-sort]').forEach(th => {
+    const active = th.dataset.sort === songSort.field;
+    th.classList.toggle('sorted', active);
+    th.querySelector('.material-icons').textContent = !active ? 'unfold_more' : songSort.dir > 0 ? 'arrow_upward' : 'arrow_downward';
+  });
+
+  const tbody = document.getElementById('song-list-body');
   tbody.innerHTML = '';
-  list.forEach(song => {
+  [...songListCache].sort(compareSongs).forEach(song => {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${escapeHtml(song.band)}</td><td>${escapeHtml(song.title)}</td>
       <td class="song-actions">
@@ -110,12 +139,6 @@ async function closeEditor() {
   clearSelection();
   document.getElementById('rows-container').innerHTML = '';
   ['editor-view', 'cellPopup', 'save-status', 'printBtn'].forEach(id => { document.getElementById(id).style.display = 'none'; });
-}
-
-function sortSongList(field) {
-   // Basic sort implementation or reloading from server
-   // For now, simple re-render if cached, or just re-fetch
-   loadSongList();
 }
 
 async function loadSelectedSong(id) {

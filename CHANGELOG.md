@@ -4,6 +4,14 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 13
+
+- Fix: sorting in the Load Song list works. Tap "Band Name" or "Song
+  Title" to sort by it, tap again to reverse; an arrow shows the active
+  column and direction. Ties are sorted by the other column, case doesn't
+  matter, numbers sort naturally ("Song 9" before "Song 10"). Default is
+  by band A→Z; the choice is remembered on the device.
+
 ## Build 12
 
 - **PDF: emoji and other symbols print correctly.** The PDF's built-in font
