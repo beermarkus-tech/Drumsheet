@@ -241,15 +241,16 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
   addLine('light', L.xBars, top, L.xBars, top + headH, L.colLine, PDF.thin);
 
   // 16th ruler for one bar: light e/&/a ticks, dark quarter ticks. Like on
-  // screen, 1/8 bars hide the 16th ticks (e/a), 1/4 bars also the 8th ticks (&).
+  // screen, only ticks on the bar's own cell boundaries are drawn (1/8: no e/a,
+  // 1/4: quarters only, 1/2: beat 3 only, Full: none).
   function addRuler(x, yTop, h, isGhost, subd = 16) {
+    const step = 16 / subd;
     for (let k = 1; k <= 15; k++) {
+      if (k % step !== 0) continue;
       const strong = k % 4 === 0;
-      const eighth = !strong && k % 2 === 0;
-      const hidden = (subd === 8 && !strong && !eighth) || (subd === 4 && !strong);
       const tx = x + k * L.barW / 16;
       if (strong) addLine('dark', tx, yTop, tx, yTop + h, isGhost ? ghost(L.dark) : L.dark, PDF.medium);
-      else if (!hidden) addLine('light', tx, yTop, tx, yTop + h, isGhost ? ghost(L.light) : L.light, PDF.thin);
+      else addLine('light', tx, yTop, tx, yTop + h, isGhost ? ghost(L.light) : L.light, PDF.thin);
     }
   }
 

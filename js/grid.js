@@ -218,7 +218,8 @@ function generateBarGridlines() {
   for (let k = 1; k <= 15; k++) {
       const strong = (k % 4 === 0);
       const eighth = !strong && k % 2 === 0;   // the "&" lines
-      html += `<div class="grid-tick${strong ? ' strong' : eighth ? ' eighth' : ''}" style="left:${(k / 16) * 100}%;"></div>`;
+      const half = k === 8;                     // beat 3
+      html += `<div class="grid-tick${strong ? ' strong' : eighth ? ' eighth' : ''}${half ? ' half' : ''}" style="left:${(k / 16) * 100}%;"></div>`;
   }
   html += '</div>';
   return html;

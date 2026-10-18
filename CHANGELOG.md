@@ -4,6 +4,13 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 18
+
+- Same idea for 1/2 and Full bars: every bar now shows only the lines on
+  its own cell boundaries. 1/2 keeps just the middle line (beat 3), Full
+  has no inner lines at all (light and dark-grey quarter lines hidden).
+  The black bar edges always stay. On screen and in the PDF.
+
 ## Build 17
 
 - Correction to Build 15: 1/8 bars now hide only the 16th lines ("e" and

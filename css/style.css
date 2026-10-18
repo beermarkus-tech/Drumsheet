@@ -173,9 +173,13 @@ button:hover { background: #f0f0f0; }
     border-left: 2px solid var(--line-dark);
 }
 
-/* 1/8 bars hide the 16th lines (e/a), 1/4 bars also the 8th lines (&) */
+/* A bar shows only the lines on its own cell boundaries: 1/8 hides the 16th
+   lines (e/a), 1/4 also the 8th lines (&), 1/2 keeps only the middle line
+   (beat 3), Full has no inner lines. The bar edges always stay. */
 .bar-container[data-subd="8"] .grid-tick:not(.strong):not(.eighth),
-.bar-container[data-subd="4"] .grid-tick:not(.strong) {
+.bar-container[data-subd="4"] .grid-tick:not(.strong),
+.bar-container[data-subd="2"] .grid-tick:not(.half),
+.bar-container[data-subd="1"] .grid-tick {
     display: none;
 }
 
