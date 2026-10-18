@@ -138,6 +138,7 @@ async function closeEditor() {
   lastSavedJson = null;
   clearSelection();
   document.getElementById('rows-container').innerHTML = '';
+  resetHistory();
   ['editor-view', 'cellPopup', 'save-status', 'printBtn'].forEach(id => { document.getElementById(id).style.display = 'none'; });
 }
 
@@ -182,6 +183,7 @@ function loadEditor(songData) {
   // opening a song never writes anything.
   lastSavedJson = JSON.stringify(collectSong());
   lastSavedTitle = songData.meta.title ?? '';
+  resetHistory();
   saveRetryDelay = 0;
   clearTimeout(saveRetryTimer); saveRetryTimer = null;
   setSaveStatus('saved');
@@ -262,6 +264,7 @@ window.markUnsaved = scheduleSave;
 async function runSave() {
   clearTimeout(saveTimer); saveTimer = null;
   if (!currentSongMeta.id) return;
+  recordHistory();
   if (saveInFlight) { saveAgain = true; return saveInFlight; }
   saveInFlight = writeSong().finally(() => { saveInFlight = null; });
   await saveInFlight;
@@ -308,6 +311,65 @@ async function writeSong() {
   if (warning) setSaveStatus('warning', warning);
   else setSaveStatus('saved');
 }
+
+// --- UNDO / REDO ---
+// Snapshots of the whole song (same data autosave writes), recorded when
+// autosave runs, i.e. ~300ms after an edit, so a typing burst is one step.
+// Undo restores the previous snapshot (and autosave then saves it).
+const HISTORY_LIMIT = 100;
+let undoHistory = [];
+let historyPos = -1;
+
+function recordHistory() {
+  if (!currentSongMeta.id) return;
+  const json = JSON.stringify(collectSong());
+  if (undoHistory[historyPos] === json) return;
+  undoHistory = undoHistory.slice(0, historyPos + 1);
+  undoHistory.push(json);
+  if (undoHistory.length > HISTORY_LIMIT) undoHistory.shift();
+  historyPos = undoHistory.length - 1;
+  updateUndoButtons();
+}
+
+function resetHistory() {
+  undoHistory = currentSongMeta.id ? [JSON.stringify(collectSong())] : [];
+  historyPos = undoHistory.length - 1;
+  updateUndoButtons();
+}
+
+function updateUndoButtons() {
+  document.getElementById('undoBtn').disabled = historyPos <= 0;
+  document.getElementById('redoBtn').disabled = historyPos >= undoHistory.length - 1;
+}
+
+function restoreSnapshot(json) {
+  const snap = JSON.parse(json);
+  const selection = selectionToIndices();
+  document.getElementById('disp-title').value = snap.title;
+  document.getElementById('disp-band').value = snap.band;
+  document.getElementById('disp-bpm').value = snap.bpm;
+  const container = document.getElementById('rows-container');
+  container.innerHTML = '';
+  snap.rows.forEach(row => window.addEditorRow(row));
+  window.refreshBarGroups();
+  selectionFromIndices(selection);
+  updateUndoButtons();
+  scheduleSave();
+}
+
+window.undoEdit = function () {
+  if (!currentSongMeta.id) return;
+  recordHistory();                       // include an edit autosave hasn't picked up yet
+  if (historyPos <= 0) return;
+  historyPos--;
+  restoreSnapshot(undoHistory[historyPos]);
+};
+
+window.redoEdit = function () {
+  if (!currentSongMeta.id || historyPos >= undoHistory.length - 1) return;
+  historyPos++;
+  restoreSnapshot(undoHistory[historyPos]);
+};
 
 // Save right now and wait for it (e.g. before switching songs). Offline,
 // Firestore queues the write and its promise only settles once back online, so

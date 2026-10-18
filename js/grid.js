@@ -225,31 +225,33 @@ function generateBarGridlines() {
   return html;
 }
 
-window.toggleSplit = function () {
-  if(!activeCell) return;
-  const bar = activeCell.closest('.bar-container');
+// Full state of one bar as a gridObj (cells + subdivision/split/repeat), so it
+// can be re-rendered with generateBarHTML without losing anything.
+function scrapeBar(bar) {
   const barNum = bar.id.split('-')[1];
-
-  // 1. Get current state
-  const currentSplit = bar.getAttribute('data-split') === 'true';
-  const newSplit = !currentSplit;
-
-  // 2. Scrape data to preserve it during re-render
-  const gridObj = {};
-
-  // Capture subd/split state
-  gridObj[`bar${barNum}_subd`] = bar.getAttribute('data-subd');
-  gridObj[`bar${barNum}_split`] = newSplit; // Apply toggle
-
-  // Capture existing cell data
+  const gridObj = {
+    [`bar${barNum}_subd`]: bar.getAttribute('data-subd'),
+    [`bar${barNum}_split`]: bar.getAttribute('data-split') === 'true',
+    [`bar${barNum}_repeat`]: bar.getAttribute('data-repeat') === 'true'
+  };
   bar.querySelectorAll('.grid-cell').forEach(cell => {
       if(cell.innerText || cell.style.backgroundColor) {
           gridObj[cell.id] = { sym: cell.innerText, color: cell.style.backgroundColor };
       }
   });
+  return gridObj;
+}
 
-  // 3. Regenerate
-  bar.outerHTML = window.generateBarHTML(barNum, gridObj);
+// Split/Merge every selected bar; all follow the anchor bar's new state
+window.toggleSplit = function () {
+  if(!activeCell) return;
+  const newSplit = activeCell.closest('.bar-container').getAttribute('data-split') !== 'true';
+  selectedBars().forEach(bar => {
+      const barNum = bar.id.split('-')[1];
+      const gridObj = scrapeBar(bar);
+      gridObj[`bar${barNum}_split`] = newSplit;
+      bar.outerHTML = window.generateBarHTML(barNum, gridObj);
+  });
   window.closePopup();
 };
 
@@ -292,79 +294,203 @@ window.onStructureChange = function (selectElem) {
 window.insertRow = function (btn) { window.addEditorRow(undefined, btn.closest('.editor-row')); };
 window.deleteRow = function (btn) { btn.closest('.editor-row').remove(); syncSelection(); };
 
-// --- EDIT SIDEBAR LOGIC ---
-// The edit panel (#cellPopup) is a permanent sidebar. Clicking a cell selects
-// it; the selection survives edits, including ones that re-render the bar
-// (subdivision, split, paste, clear bar) — see syncSelection().
-let activeRef = null; // { row, barNum, aux, idx } — where the selection lives
+// --- EDIT SIDEBAR LOGIC / SELECTION ---
+// The edit panel (#cellPopup) is a permanent sidebar. The selection is a range
+// in reading order (row by row, bar 1 then bar 2) between an anchor and a
+// focus position { row, barNum, aux, idx (1-16) }:
+//   - tap a cell: select just that cell (anchor = focus)
+//   - long-press (or Shift+click) another cell: select everything from the
+//     anchor to there
+//   - "Select bar" / "Select row" in the sidebar
+// The range stays in the anchor's lane (main or aux); a bar without that lane
+// uses its main lane. Positions survive bars being re-rendered (subdivision,
+// split, paste...), so the selected cells are recomputed after every edit.
+let selAnchor = null, selFocus = null;
+let selectedCells = [];
 
-window.onCellClick = function (event, cell) {
-  event.stopPropagation();
-  selectCell(cell);
-};
-
-function selectCell(cell) {
-  if (activeCell && activeCell !== cell) activeCell.classList.remove('cell-selected');
-  activeCell = cell;
-  cell.classList.add('cell-selected');
-
-  const bar = cell.closest('.bar-container');
-  activeRef = {
+function cellPos(cell) {
+  return {
       row: cell.closest('.editor-row'),
-      barNum: bar.id.split('-')[1],
+      barNum: parseInt(cell.closest('.bar-container').id.split('-')[1]),
       aux: cell.id.startsWith('aux_'),
       idx: parseInt(cell.id.split('_c')[1])
   };
-
-  populateSidebarLists();
-
-  // Cell text
-  document.getElementById('popup-comment').value = cell.innerText;
-
-  // Highlight subdivision
-  const currentSubd = parseInt(bar.getAttribute('data-subd')) || 8;
-  document.querySelectorAll('.subd-btn').forEach(btn => {
-      btn.classList.toggle('active', parseInt(btn.dataset.val) === currentSubd);
-  });
-
-  // Selection label, e.g. "Row 3 · Bar 1 · 2&"
-  const rowNum = [...document.querySelectorAll('#rows-container .editor-row')].indexOf(activeRef.row) + 1;
-  const COUNTS = ['', 'e', '&', 'a'];
-  const pos = activeRef.idx - 1;
-  const beat = `${Math.floor(pos / 4) + 1}${COUNTS[pos % 4]}`;
-  document.getElementById('sidebar-selection').textContent =
-      `Row ${rowNum} · Bar ${activeRef.barNum} · ${beat}${activeRef.aux ? ' (aux)' : ''}`;
-
-  document.getElementById('cellPopup').classList.remove('no-selection');
 }
 
+// Position in 16ths from the start of the song
+function linearPos(pos, rows) {
+  return (rows.indexOf(pos.row) * 2 + (pos.barNum - 1)) * 16 + (pos.idx - 1);
+}
+
+function laneCells(bar, aux) {
+  const cells = [...bar.querySelectorAll('.grid-cell')];
+  const lane = cells.filter(c => c.id.startsWith('aux_') === aux);
+  return lane.length ? lane : cells.filter(c => !c.id.startsWith('aux_'));
+}
+
+function resolveSelection() {
+  const rows = [...document.querySelectorAll('#rows-container .editor-row')];
+  if (!selAnchor || !rows.includes(selAnchor.row)) return [];
+  if (!selFocus || !rows.includes(selFocus.row)) selFocus = { ...selAnchor };
+  const a = linearPos(selAnchor, rows), b = linearPos(selFocus, rows);
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  const cells = [];
+  for (let r = Math.floor(lo / 32); r <= Math.floor(hi / 32); r++) {
+      [1, 2].forEach(barNum => {
+          const bar = rows[r].querySelector(`#bar-${barNum}`);
+          const slots = 16 / (parseInt(bar.getAttribute('data-subd')) || 8);
+          laneCells(bar, selAnchor.aux).forEach(cell => {
+              const start = (r * 2 + barNum - 1) * 16 + parseInt(cell.id.split('_c')[1]) - 1;
+              if (start + slots - 1 >= lo && start <= hi) cells.push(cell);
+          });
+      });
+  }
+  return cells;
+}
+
+function selectedBars() {
+  return [...new Set(selectedCells.map(c => c.closest('.bar-container')))];
+}
+
+window.onCellClick = function (event, cell) {
+  event.stopPropagation();
+  if (event.shiftKey && selAnchor) extendSelectionTo(cell);
+  else selectCell(cell);
+};
+
+function selectCell(cell) {
+  selAnchor = cellPos(cell);
+  selFocus = { ...selAnchor };
+  syncSelection();
+}
+
+function extendSelectionTo(cell) {
+  if (!selAnchor || !selAnchor.row.isConnected) { selectCell(cell); return; }
+  selFocus = cellPos(cell);
+  syncSelection();
+}
+
+window.selectWholeBar = function () {
+  if (!selAnchor) return;
+  const { row, barNum, aux } = selAnchor;
+  selAnchor = { row, barNum, aux, idx: 1 };
+  selFocus = { row, barNum, aux, idx: 16 };
+  syncSelection();
+};
+
+window.selectWholeRow = function () {
+  if (!selAnchor) return;
+  const { row, aux } = selAnchor;
+  selAnchor = { row, barNum: 1, aux, idx: 1 };
+  selFocus = { row, barNum: 2, aux, idx: 16 };
+  syncSelection();
+};
+
 function clearSelection() {
-  if (activeCell) activeCell.classList.remove('cell-selected');
+  document.querySelectorAll('.cell-selected').forEach(c => c.classList.remove('cell-selected'));
   activeCell = null;
-  activeRef = null;
+  selAnchor = selFocus = null;
+  selectedCells = [];
   document.getElementById('popup-comment').value = '';
   document.querySelectorAll('.subd-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById('sidebar-selection').textContent = 'Click a cell to edit it';
+  document.getElementById('sidebar-selection').textContent = 'Tap a cell · long-press another to select a range';
   document.getElementById('cellPopup').classList.add('no-selection');
 }
 window.clearSelection = clearSelection;
 
-// After an action, re-attach the selection: if the bar was re-rendered the old
-// cell element is gone, so pick the cell now covering the same 16th position
-// (falling back to the main lane if the aux lane no longer exists).
-function syncSelection() {
-  if (!activeCell) return;
-  if (activeCell.isConnected) { selectCell(activeCell); return; }
-  if (!activeRef || !activeRef.row.isConnected) { clearSelection(); return; }
+// Selection as row indices (rows are re-created by undo/redo) and back
+window.selectionToIndices = function () {
+  if (!selAnchor) return null;
+  const rows = [...document.querySelectorAll('#rows-container .editor-row')];
+  return { anchor: { ...selAnchor, row: rows.indexOf(selAnchor.row) }, focus: { ...selFocus, row: rows.indexOf(selFocus.row) } };
+};
+window.selectionFromIndices = function (sel) {
+  const rows = [...document.querySelectorAll('#rows-container .editor-row')];
+  if (!sel || !rows[sel.anchor.row]) { clearSelection(); return; }
+  selAnchor = { ...sel.anchor, row: rows[sel.anchor.row] };
+  selFocus = { ...sel.focus, row: rows[sel.focus.row] || rows[sel.anchor.row] };
+  syncSelection();
+};
 
-  const bar = activeRef.row.querySelector(`#bar-${activeRef.barNum}`);
-  const cells = [...bar.querySelectorAll('.grid-cell')];
-  let lane = cells.filter(c => c.id.startsWith('aux_') === activeRef.aux);
-  if (lane.length === 0) lane = cells.filter(c => !c.id.startsWith('aux_'));
-  let best = lane[0];
-  lane.forEach(c => { if (parseInt(c.id.split('_c')[1]) <= activeRef.idx) best = c; });
-  if (best) selectCell(best); else clearSelection();
+const COUNTS = ['', 'e', '&', 'a'];
+function describePos(p) {
+  const r = Math.floor(p / 32) + 1, bar = Math.floor(p / 16) % 2 + 1, i = p % 16;
+  return { r, bar, i, beat: `${Math.floor(i / 4) + 1}${COUNTS[i % 4]}` };
 }
+
+// Re-resolve the selection and update the highlight and the sidebar
+function syncSelection() {
+  document.querySelectorAll('.cell-selected').forEach(c => c.classList.remove('cell-selected'));
+  selectedCells = resolveSelection();
+  if (selectedCells.length === 0) { clearSelection(); return; }
+  selectedCells.forEach(c => c.classList.add('cell-selected'));
+
+  // The anchor cell drives single-bar actions (copy, paste, clear bar)
+  const anchorBar = selAnchor.row.querySelector(`#bar-${selAnchor.barNum}`);
+  const anchorSlots = 16 / (parseInt(anchorBar.getAttribute('data-subd')) || 8);
+  const lane = laneCells(anchorBar, selAnchor.aux);
+  activeCell = lane.find(c => { const s = parseInt(c.id.split('_c')[1]); return s <= selAnchor.idx && selAnchor.idx < s + anchorSlots; }) || selectedCells[0];
+
+  populateSidebarLists();
+
+  // Cell text: shown when all selected cells have the same text
+  const texts = new Set(selectedCells.map(c => c.innerText));
+  document.getElementById('popup-comment').value = texts.size === 1 ? [...texts][0] : '';
+
+  // Subdivision: highlighted when all selected bars share it
+  const subds = new Set(selectedBars().map(b => parseInt(b.getAttribute('data-subd')) || 8));
+  document.querySelectorAll('.subd-btn').forEach(btn => {
+      btn.classList.toggle('active', subds.size === 1 && parseInt(btn.dataset.val) === [...subds][0]);
+  });
+
+  // Label, e.g. "Row 3 · Bar 1 · 2&", "Row 3 · Bar 1 (8 cells)",
+  // "Row 3 · Bar 1 · 2& → Row 4 · Bar 2 · 3 (11 cells)"
+  const rows = [...document.querySelectorAll('#rows-container .editor-row')];
+  const a = linearPos(selAnchor, rows), b = linearPos(selFocus, rows);
+  const lo = describePos(Math.min(a, b)), hi = describePos(Math.max(a, b));
+  const aux = selAnchor.aux ? ' (aux)' : '';
+  let label;
+  if (selectedCells.length === 1) label = `Row ${lo.r} · Bar ${lo.bar} · ${lo.beat}`;
+  else if (lo.r === hi.r && lo.i === 0 && hi.i === 15 && lo.bar === hi.bar) label = `Row ${lo.r} · Bar ${lo.bar}`;
+  else if (lo.r === hi.r && lo.i === 0 && hi.i === 15 && lo.bar === 1 && hi.bar === 2) label = `Row ${lo.r}`;
+  else label = `Row ${lo.r} · Bar ${lo.bar} · ${lo.beat} → Row ${hi.r} · Bar ${hi.bar} · ${hi.beat}`;
+  if (selectedCells.length > 1) label += ` (${selectedCells.length} cells)`;
+  document.getElementById('sidebar-selection').textContent = label + aux;
+
+  document.getElementById('cellPopup').classList.remove('no-selection');
+}
+
+// Long-press on a cell extends the selection to it (tablets have no Shift)
+window.initCellSelection = function () {
+  const container = document.getElementById('rows-container');
+  const LONG_PRESS_MS = 450;
+  let timer = null, startX = 0, startY = 0, suppressClick = false;
+  const cancel = () => { clearTimeout(timer); timer = null; };
+
+  container.addEventListener('pointerdown', (e) => {
+      suppressClick = false;
+      const cell = e.target.closest('.grid-cell');
+      if (!cell) return;
+      startX = e.clientX; startY = e.clientY;
+      cancel();
+      timer = setTimeout(() => {
+          timer = null;
+          suppressClick = true;           // the click that ends this press
+          extendSelectionTo(cell);
+          if (navigator.vibrate) navigator.vibrate(15);
+      }, LONG_PRESS_MS);
+  });
+  container.addEventListener('pointermove', (e) => {
+      if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) cancel();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => container.addEventListener(t, cancel));
+  // Swallow the click after a long-press so it doesn't re-select a single cell
+  container.addEventListener('click', (e) => {
+      if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
+  // No browser context menu / callout on long-pressed cells
+  container.addEventListener('contextmenu', (e) => { if (e.target.closest('.grid-cell')) e.preventDefault(); });
+};
 
 function populateSidebarLists() {
   // A. Symbols (left)
@@ -407,48 +533,38 @@ function populateSidebarLists() {
   }
 }
 
+// --- EDIT ACTIONS (apply to every selected cell / bar) ---
 window.selectSymbol = function (s) {
-  if(activeCell) {
-      activeCell.innerText = s.symbol;
-      activeCell.style.backgroundColor = s.color;
-      window.closePopup();
-  }
+  if (!selectedCells.length) return;
+  selectedCells.forEach(cell => {
+      cell.innerText = s.symbol;
+      cell.style.backgroundColor = s.color;
+  });
+  window.closePopup();
 };
 
 window.applyText = function () {
-  if(activeCell) {
-      activeCell.innerText = document.getElementById('popup-comment').value;
-      window.closePopup();
-  }
+  if (!selectedCells.length) return;
+  const text = document.getElementById('popup-comment').value;
+  selectedCells.forEach(cell => { cell.innerText = text; });
+  window.closePopup();
 };
 
 window.selectBackgroundColor = function (hex) {
-  if(activeCell) {
-      activeCell.style.backgroundColor = hex;
-      window.closePopup();
-      window.markUnsaved();
-  }
+  if (!selectedCells.length) return;
+  selectedCells.forEach(cell => { cell.style.backgroundColor = hex; });
+  window.closePopup();
+  window.markUnsaved();
 };
 
 window.changeSubdivision = function (newSubd) {
-  if(!activeCell) return;
-  const bar = activeCell.closest('.bar-container');
-  const row = bar.closest('.editor-row');
-  const barNum = bar.id.split('-')[1];
-
-  // Scrape current data
-  const gridData = {};
-  row.querySelectorAll('.grid-cell').forEach(cell => {
-      if(cell.innerText || cell.style.backgroundColor) {
-          gridData[cell.id] = { sym: cell.innerText, color: cell.style.backgroundColor };
-      }
+  if (!selectedCells.length) return;
+  selectedBars().forEach(bar => {
+      const barNum = bar.id.split('-')[1];
+      const gridObj = scrapeBar(bar);              // keeps split/ghost state
+      gridObj[`bar${barNum}_subd`] = newSubd;
+      bar.outerHTML = window.generateBarHTML(barNum, gridObj);
   });
-
-  // Update Subd
-  gridData[`bar${barNum}_subd`] = newSubd;
-
-  // Regenerate and Replace
-  bar.outerHTML = window.generateBarHTML(barNum, gridData);
   window.closePopup();
 };
 
@@ -536,11 +652,12 @@ function _pasteLogic(isGhost) {
 }
 
 window.clearCell = function () {
-  if(activeCell) {
-      activeCell.innerText = '';
-      activeCell.style.backgroundColor = '';
-      window.closePopup();
-  }
+  if (!selectedCells.length) return;
+  selectedCells.forEach(cell => {
+      cell.innerText = '';
+      cell.style.backgroundColor = '';
+  });
+  window.closePopup();
 };
 
 window.clearBar = function () {
@@ -559,5 +676,5 @@ window.clearBar = function () {
 };
 
 // Called after every edit action (name kept from the old floating popup).
-// The sidebar stays open; just re-sync it with the (possibly re-rendered) cell.
+// The sidebar stays open; just re-sync it with the (possibly re-rendered) cells.
 window.closePopup = function () { syncSelection(); };

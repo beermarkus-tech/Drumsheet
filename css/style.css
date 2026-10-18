@@ -150,6 +150,8 @@ button:hover { background: #f0f0f0; }
 }
 
 .grid-cell:hover { background-color: #f0f0f0; }
+/* Long-press selects a range: no text-selection callout/menu on touch */
+.grid-cell { -webkit-touch-callout: none; -webkit-user-select: none; touch-action: manipulation; }
 
 /* --- ALWAYS-VISIBLE 16TH GRIDLINES --- */
 /* Independent of the bar's actual subdivision/merge state, drawn on top of
@@ -219,7 +221,12 @@ button:hover { background: #f0f0f0; }
     overflow-y: auto;
 }
 .sidebar-header { border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.sidebar-title-row { display: flex; align-items: center; justify-content: space-between; }
 .sidebar-title { font-weight: bold; color: var(--primary); }
+.sidebar-undo { display: flex; gap: 2px; }
+.sidebar-undo .icon-btn:disabled { color: #ddd; background: transparent; cursor: default; }
+.select-actions { margin-top: 0; }
+.select-actions .popup-btn { padding: 6px; }
 .sidebar-selection { font-size: 0.85rem; color: #555; margin-top: 3px; }
 .sidebar-controls { display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; }
 /* Nothing selected: controls stay visible but inert */

@@ -18,7 +18,7 @@
   <div class="app-header">
     <div class="app-title">DRUMSHEET 🥁</div>
     <div class="app-header-right">
-      <div class="app-version">Build 18</div>
+      <div class="app-version">Build 19</div>
       <button id="reloadBtn" class="reload-btn" onclick="reloadApp()" title="Load the latest build"><span class="material-icons">refresh</span> Reload</button>
     </div>
   </div>
@@ -77,11 +77,22 @@
 
     <div id="cellPopup" class="edit-sidebar no-selection" style="display:none;">
       <div class="sidebar-header">
-        <div class="sidebar-title">Edit Cell</div>
-        <div id="sidebar-selection" class="sidebar-selection">Click a cell to edit it</div>
+        <div class="sidebar-title-row">
+          <div class="sidebar-title">Edit Cell</div>
+          <div class="sidebar-undo">
+            <button id="undoBtn" class="icon-btn" onclick="undoEdit()" title="Undo (Ctrl+Z)" disabled><span class="material-icons">undo</span></button>
+            <button id="redoBtn" class="icon-btn" onclick="redoEdit()" title="Redo (Ctrl+Y)" disabled><span class="material-icons">redo</span></button>
+          </div>
+        </div>
+        <div id="sidebar-selection" class="sidebar-selection">Tap a cell · long-press another to select a range</div>
       </div>
 
       <div class="sidebar-controls">
+
+        <div class="popup-actions select-actions">
+          <button class="popup-btn" onclick="selectWholeBar()">Select bar</button>
+          <button class="popup-btn" onclick="selectWholeRow()">Select row</button>
+        </div>
 
         <div class="popup-section-title">Cell Text</div>
         <input id="popup-comment" class="cell-comment-input" placeholder="Type & Enter..." onkeydown="if(event.key === 'Enter') applyText()">

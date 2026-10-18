@@ -48,6 +48,7 @@ window.onload = function() {
 
   // 2. Edit sidebar starts with nothing selected; edits autosave
   clearSelection();
+  initCellSelection();
   initAutosave();
   // Rows added/removed change which rows a bar group covers
   new MutationObserver(() => refreshBarGroups()).observe(document.getElementById('rows-container'), { childList: true });
@@ -137,7 +138,20 @@ document.addEventListener('keydown', function(e) {
   const activeTag = document.activeElement.tagName.toLowerCase();
   if (activeTag === 'input' || activeTag === 'textarea') return;
 
-  // 2. SHORTCUTS (Only active when NOT typing)
+  // 2. SHORTCUTS (Only active when NOT typing; in text fields the browser's
+  // own undo applies)
+
+  // CTRL + Z = Undo, CTRL + Y / CTRL + SHIFT + Z = Redo
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) redoEdit(); else undoEdit();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    redoEdit();
+    return;
+  }
 
   // CTRL + C = Copy Bar
   if ((e.ctrlKey || e.metaKey) && e.key === 'c') {

@@ -4,6 +4,28 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 19
+
+- **Select several cells, then edit them all at once.**
+  - Tap a cell to select it; **long-press** another cell (or Shift+click)
+    to select everything from the first to that one, in reading order —
+    also across bar 1 → bar 2 and onto following rows.
+  - Sidebar buttons **Select bar** / **Select row** select the whole bar /
+    both bars of the tapped cell's row.
+  - Split bars: the selection stays in the tapped lane (main or aux).
+  - Symbol, background color, cell text and Clear Cell apply to every
+    selected cell; subdivision and Split/Merge to every bar the selection
+    touches. Copy / Paste / Paste (Ghost) / Clear Bar still act on the
+    bar of the first tapped cell.
+  - All selected cells are outlined; the sidebar shows what's selected,
+    e.g. "Row 3 · Bar 1 (8 cells)".
+- **Undo / Redo** buttons in the sidebar header (Ctrl+Z, Ctrl+Y /
+  Ctrl+Shift+Z), up to 100 steps per song, covering every kind of edit
+  (grid, lyrics, structure, bars, title/band/BPM). A typing burst is one
+  step. Resets when another song is opened.
+- Fix: changing a bar's subdivision no longer un-splits a split bar (losing
+  its aux lane) or drops its ghost state; Split/Merge keeps the ghost state.
+
 ## Build 18
 
 - Same idea for 1/2 and Full bars: every bar now shows only the lines on
