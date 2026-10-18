@@ -173,6 +173,12 @@ button:hover { background: #f0f0f0; }
     border-left: 2px solid var(--line-dark);
 }
 
+/* 1/8 and 1/4 bars: only the quarter-note lines, no light e/&/a lines */
+.bar-container[data-subd="8"] .grid-tick:not(.strong),
+.bar-container[data-subd="4"] .grid-tick:not(.strong) {
+    display: none;
+}
+
 /* Header Specifics */
 .beat-numbers { display: flex; background: #34495e; font-size: 0.7rem; align-items: center; height: 100%; }
 .beat-num {

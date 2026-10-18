@@ -98,6 +98,7 @@ function barModel(bar) {
   const split = bar.getAttribute('data-split') === 'true';
   return {
     repeat: bar.getAttribute('data-repeat') === 'true',
+    subd: parseInt(bar.getAttribute('data-subd')) || 8,
     split,
     lanes: split
       ? [lane(bar.querySelectorAll('.sub-line.upper .grid-cell')), lane(bar.querySelectorAll('.sub-line.lower .grid-cell'))]
@@ -239,13 +240,14 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
   addLine('light', L.xLyrics, top, L.xLyrics, top + headH, L.colLine, PDF.thin);
   addLine('light', L.xBars, top, L.xBars, top + headH, L.colLine, PDF.thin);
 
-  // 16th ruler for one bar: light e/&/a ticks, dark quarter ticks
-  function addRuler(x, yTop, h, isGhost) {
+  // 16th ruler for one bar: light e/&/a ticks, dark quarter ticks. 1/8 and 1/4
+  // bars show only the quarter ticks (like on screen).
+  function addRuler(x, yTop, h, isGhost, hideLight = false) {
     for (let k = 1; k <= 15; k++) {
       const strong = k % 4 === 0;
       const tx = x + k * L.barW / 16;
       if (strong) addLine('dark', tx, yTop, tx, yTop + h, isGhost ? ghost(L.dark) : L.dark, PDF.medium);
-      else addLine('light', tx, yTop, tx, yTop + h, isGhost ? ghost(L.light) : L.light, PDF.thin);
+      else if (!hideLight) addLine('light', tx, yTop, tx, yTop + h, isGhost ? ghost(L.light) : L.light, PDF.thin);
     }
   }
 
@@ -306,7 +308,7 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
       });
     });
     if (bar.split) addLine('light', x, y0 + laneH, x + L.barW, y0 + laneH, bar.repeat ? ghost(L.light) : L.light, PDF.thin);
-    addRuler(x, y0, PDF.rowH, bar.repeat);
+    addRuler(x, y0, PDF.rowH, bar.repeat, bar.subd === 8 || bar.subd === 4);
   }
 
   // --- Column lines + frame ---

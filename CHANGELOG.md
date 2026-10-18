@@ -4,6 +4,13 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 15
+
+- Bars set to 1/8 or 1/4 subdivision no longer show the light-grey
+  e/&/a lines, only the dark-grey quarter-note lines (and the black bar
+  edges) — on screen and in the PDF, per bar. 1/16, 1/2 and Full bars and
+  the header count are unchanged.
+
 ## Build 14
 
 - The Bars cell is now a button that opens a small "Bars" dialog with two
