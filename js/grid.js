@@ -217,7 +217,8 @@ function generateBarGridlines() {
   let html = '<div class="bar-gridlines">';
   for (let k = 1; k <= 15; k++) {
       const strong = (k % 4 === 0);
-      html += `<div class="grid-tick${strong ? ' strong' : ''}" style="left:${(k / 16) * 100}%;"></div>`;
+      const eighth = !strong && k % 2 === 0;   // the "&" lines
+      html += `<div class="grid-tick${strong ? ' strong' : eighth ? ' eighth' : ''}" style="left:${(k / 16) * 100}%;"></div>`;
   }
   html += '</div>';
   return html;

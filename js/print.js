@@ -240,14 +240,16 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
   addLine('light', L.xLyrics, top, L.xLyrics, top + headH, L.colLine, PDF.thin);
   addLine('light', L.xBars, top, L.xBars, top + headH, L.colLine, PDF.thin);
 
-  // 16th ruler for one bar: light e/&/a ticks, dark quarter ticks. 1/8 and 1/4
-  // bars show only the quarter ticks (like on screen).
-  function addRuler(x, yTop, h, isGhost, hideLight = false) {
+  // 16th ruler for one bar: light e/&/a ticks, dark quarter ticks. Like on
+  // screen, 1/8 bars hide the 16th ticks (e/a), 1/4 bars also the 8th ticks (&).
+  function addRuler(x, yTop, h, isGhost, subd = 16) {
     for (let k = 1; k <= 15; k++) {
       const strong = k % 4 === 0;
+      const eighth = !strong && k % 2 === 0;
+      const hidden = (subd === 8 && !strong && !eighth) || (subd === 4 && !strong);
       const tx = x + k * L.barW / 16;
       if (strong) addLine('dark', tx, yTop, tx, yTop + h, isGhost ? ghost(L.dark) : L.dark, PDF.medium);
-      else if (!hideLight) addLine('light', tx, yTop, tx, yTop + h, isGhost ? ghost(L.light) : L.light, PDF.thin);
+      else if (!hidden) addLine('light', tx, yTop, tx, yTop + h, isGhost ? ghost(L.light) : L.light, PDF.thin);
     }
   }
 
@@ -308,7 +310,7 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
       });
     });
     if (bar.split) addLine('light', x, y0 + laneH, x + L.barW, y0 + laneH, bar.repeat ? ghost(L.light) : L.light, PDF.thin);
-    addRuler(x, y0, PDF.rowH, bar.repeat, bar.subd === 8 || bar.subd === 4);
+    addRuler(x, y0, PDF.rowH, bar.repeat, bar.subd);
   }
 
   // --- Column lines + frame ---

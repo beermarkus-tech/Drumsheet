@@ -173,8 +173,8 @@ button:hover { background: #f0f0f0; }
     border-left: 2px solid var(--line-dark);
 }
 
-/* 1/8 and 1/4 bars: only the quarter-note lines, no light e/&/a lines */
-.bar-container[data-subd="8"] .grid-tick:not(.strong),
+/* 1/8 bars hide the 16th lines (e/a), 1/4 bars also the 8th lines (&) */
+.bar-container[data-subd="8"] .grid-tick:not(.strong):not(.eighth),
 .bar-container[data-subd="4"] .grid-tick:not(.strong) {
     display: none;
 }

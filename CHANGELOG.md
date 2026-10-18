@@ -4,6 +4,13 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 17
+
+- Correction to Build 15: 1/8 bars now hide only the 16th lines ("e" and
+  "a") and keep the light-grey "&" lines between the 8th notes; 1/4 bars
+  hide both the 16th and the "&" lines (only quarter lines remain). On
+  screen and in the PDF.
+
 ## Build 16
 
 - The Title field in the song info bar is wider: up to 420px (was 150px),
