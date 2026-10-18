@@ -520,15 +520,21 @@ function populateSidebarLists() {
   clearDiv.onclick = () => window.selectBackgroundColor('');
   colContainer.appendChild(clearDiv);
 
-  // 2. Palette Colors (LIGHT color for backgrounds)
+  // 2. Palette Colors: light shade (left) and the slightly darker shade also
+  // used for drum symbols in Configure (right), one row per color
   if(typeof PALETTE !== 'undefined') {
       PALETTE.forEach(c => {
-          const div = document.createElement('div');
-          div.className = 'color-swatch';
-          div.style.backgroundColor = c.light;
-          div.title = c.name;
-          div.onclick = () => window.selectBackgroundColor(c.light);
-          colContainer.appendChild(div);
+          const pair = document.createElement('div');
+          pair.className = 'color-pair';
+          [[c.light, `${c.name} (light)`], [c.strong, c.name]].forEach(([hex, title]) => {
+              const div = document.createElement('div');
+              div.className = 'color-swatch';
+              div.style.backgroundColor = hex;
+              div.title = title;
+              div.onclick = () => window.selectBackgroundColor(hex);
+              pair.appendChild(div);
+          });
+          colContainer.appendChild(pair);
       });
   }
 }

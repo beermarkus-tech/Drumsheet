@@ -4,6 +4,12 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 20
+
+- Background color selector now offers both shades of every palette color:
+  the light one (left, as before) and the slightly darker one used for the
+  drum elements in Configure (right), one row per color.
+
 ## Build 19
 
 - **Select several cells, then edit them all at once.**

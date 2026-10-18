@@ -282,9 +282,9 @@ button:hover { background: #f0f0f0; }
     min-height: 0;
 }
 
-/* Color Column (Right, Narrow) */
+/* Color Column (Right, Narrow): light | darker shade per row */
 .color-list {
-    flex: 1;
+    flex: 1.6;
     display: flex; flex-direction: column; gap: 4px;
     overflow-y: auto; /* Scrollable */
     border: 1px solid #eee; padding: 4px; border-radius: 4px;
@@ -304,6 +304,9 @@ button:hover { background: #f0f0f0; }
     box-sizing: border-box; /* Include border in height */
     transition: transform 0.1s;
 }
+
+.color-pair { display: flex; gap: 4px; }
+.color-pair .color-swatch { flex: 1; min-width: 0; }
 
 .color-swatch:hover {
     transform: scale(1.1); /* Subtle zoom */
