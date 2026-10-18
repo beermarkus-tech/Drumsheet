@@ -81,6 +81,16 @@ button:hover { background: #f0f0f0; }
   overflow: hidden;
 }
 
+/* COL 2b: BARS (group size; only as wide as the dropdown needs) */
+.col-bars {
+  flex: 0 0 auto; width: 52px;
+  border-right: 1px solid #ccc; padding: 0 3px;
+  display: flex; align-items: center; justify-content: center;
+}
+.bars-select { width: 100%; border: none; background: white; font-weight: bold; text-align: center; cursor: pointer; }
+.bars-select:disabled { background: transparent; color: transparent; cursor: default; }
+.editor-row.bars-covered .col-bars { background: #f6f6f6; }
+
 /* COL 3: GRID (Auto - Shrinks/Grows based on cell count) */
 .col-grid {
   display: flex;

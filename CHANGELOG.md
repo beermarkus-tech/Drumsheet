@@ -4,6 +4,23 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 11
+
+- **PDF is now real vector graphics**, drawn directly with jsPDF instead of
+  a screenshot of the page: sharp at any zoom, real (searchable) text,
+  ~0.1s to create, ~30KB per page. Drawing order is fills → light lines →
+  dark lines → thick black lines → text, so thick lines are never covered
+  and lines never cut through symbols. html2canvas removed.
+- **New "Bars" column** between Lyrics and Bar 1 (dropdown: -, 2, 4, 6, 8).
+  Set it on the first row of a group; since a row holds 2 bars, the group
+  covers value/2 rows. Covered rows are greyed out/disabled in the editor
+  (no merged box on screen). A group stops at a new section and at the end
+  of the song. In the PDF the group is one merged box with the number,
+  normal row lines around it, and a group is never split across pages.
+  Saved per row as `bars`.
+- A new section now means: the structure differs from the last non-empty
+  structure above (rows without a structure don't end a section).
+
 ## Build 10
 
 - **Reload button** (top right, next to the build number): saves pending

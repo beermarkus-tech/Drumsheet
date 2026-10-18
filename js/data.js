@@ -92,6 +92,8 @@ function loadEditor(songData) {
     window.addEditorRow();
   }
 
+  window.refreshBarGroups();
+
   // Baseline for autosave: the song as rendered counts as "saved", so just
   // opening a song never writes anything.
   lastSavedJson = JSON.stringify(collectSong());
@@ -146,6 +148,7 @@ function collectRows() {
       rows.push({
           structure: row.querySelector('.struct-select').value,
           lyrics: row.querySelector('.lyrics-input').value,
+          bars: row.querySelector('.bars-select').value,
           gridData: JSON.stringify(gridData)
       });
   });

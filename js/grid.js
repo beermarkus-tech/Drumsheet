@@ -1,6 +1,60 @@
 let activeCell = null;
 let clipboardBar = null; // Holds the copied bar data
 
+// --- BAR GROUPS ("Bars" column) ---
+// A row's "Bars" value (2/4/6/8) starts a group of that many bars. Each row holds
+// 2 bars, so the group covers value/2 rows: this one and the following ones. A
+// group never crosses into a new section and stops at the end of the song.
+// Only the first row carries the value; covered rows are disabled in the editor
+// (no merged box on screen). The PDF draws the group as one merged box.
+const BAR_GROUP_SIZES = ['', '2', '4', '6', '8'];
+
+// A new section starts where a (non-empty) structure differs from the last
+// non-empty structure above it (rows without a structure don't end a section)
+function isSectionStart(structs, i) {
+  if (i === 0 || structs[i] === '') return false;
+  for (let j = i - 1; j >= 0; j--) {
+    if (structs[j] !== '') return structs[j] !== structs[i];
+  }
+  return false;
+}
+
+// rows: [{ bars, struct }] -> per row { span, covered }; span > 0 on a group's
+// first row (number of rows it covers), 0 otherwise.
+function computeBarGroups(rows) {
+  const structs = rows.map(r => r.struct);
+  const out = rows.map(() => ({ span: 0, covered: false }));
+  for (let i = 0; i < rows.length;) {
+    const size = parseInt(rows[i].bars);
+    if (!size) { i++; continue; }
+    let span = 1;
+    while (span < size / 2 && i + span < rows.length && !isSectionStart(structs, i + span)) {
+      out[i + span].covered = true;
+      span++;
+    }
+    out[i].span = span;
+    i += span;
+  }
+  return out;
+}
+
+window.refreshBarGroups = function () {
+  const rows = [...document.querySelectorAll('#rows-container .editor-row')];
+  const groups = computeBarGroups(rows.map(r => ({
+    bars: r.querySelector('.bars-select').value,
+    struct: r.querySelector('.struct-select').value
+  })));
+  let cleared = false;
+  rows.forEach((row, i) => {
+    const select = row.querySelector('.bars-select');
+    const covered = groups[i].covered;
+    if (covered && select.value) { select.value = ''; cleared = true; }
+    if (select.disabled !== covered) select.disabled = covered;
+    row.classList.toggle('bars-covered', covered);
+  });
+  if (cleared) window.markUnsaved();
+};
+
 // --- ROW GENERATION ---
 window.addEditorRow = function (data = { structure: '', lyrics: '', gridData: '{}' }, afterElement = null) {
   const div = document.createElement('div');
@@ -33,6 +87,12 @@ window.addEditorRow = function (data = { structure: '', lyrics: '', gridData: '{
 
     <div class="col-lyrics">
         <input type="text" class="lyrics-input" value="${escapeHtml(data.lyrics)}" style="color:${escapeHtml(currentColor)}" placeholder="Lyrics...">
+    </div>
+
+    <div class="col-bars">
+        <select class="bars-select" onchange="refreshBarGroups()" title="Bars in this group (starts here)">
+          ${BAR_GROUP_SIZES.map(n => `<option value="${n}"${String(data.bars || '') === n ? ' selected' : ''}>${n || '-'}</option>`).join('')}
+        </select>
     </div>
 
     <div class="col-grid">
@@ -179,6 +239,9 @@ window.onStructureChange = function (selectElem) {
 
   // 2. Change the lyrics input color too
   selectElem.closest('.editor-row').querySelector('.lyrics-input').style.color = color;
+
+  // 3. Section boundaries limit bar groups
+  window.refreshBarGroups();
 };
 
 window.insertRow = function (btn) { window.addEditorRow(undefined, btn.closest('.editor-row')); };

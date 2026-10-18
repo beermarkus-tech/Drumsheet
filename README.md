@@ -18,8 +18,8 @@ Google Sheet (see `legacy-gas/` for the original source).
   300ms after the last change; the whole song (meta + rows) is written in one
   update, and only if it differs from what was last saved. There is no
   manual save button (Ctrl+S forces an immediate save).
-- `js/print.js` builds the A4 PDF with the bundled `js/vendor/` libraries
-  (html2canvas + jsPDF, MIT licensed).
+- `js/print.js` draws the A4 PDF as vector graphics with the bundled
+  `js/vendor/jspdf.umd.min.js` (jsPDF, MIT licensed).
 - `manifest.json` + `sw.js` make it installable and give it an offline app
   shell (the UI loads with no connection; editing songs still needs Firestore).
 - Firestore layout:

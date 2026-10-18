@@ -49,6 +49,8 @@ window.onload = function() {
   // 2. Edit sidebar starts with nothing selected; edits autosave
   clearSelection();
   initAutosave();
+  // Rows added/removed change which rows a bar group covers
+  new MutationObserver(() => refreshBarGroups()).observe(document.getElementById('rows-container'), { childList: true });
 
   // 3. Register service worker for PWA install / offline shell
   if ('serviceWorker' in navigator) {
@@ -221,6 +223,7 @@ function refreshEditorStructures(renames = {}) {
     const lyrics = row.querySelector('.lyrics-input');
     if (lyrics.style.color !== color) lyrics.style.color = color;
   });
+  refreshBarGroups();
 }
 function openNewSongModal() {
   document.getElementById('new-title').value = '';

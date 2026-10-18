@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drumsheet-shell-build-10';
+const CACHE_NAME = 'drumsheet-shell-build-11';
 
 const APP_SHELL = [
   './',
@@ -10,7 +10,6 @@ const APP_SHELL = [
   './js/grid.js',
   './js/data.js',
   './js/print.js',
-  './js/vendor/html2canvas.min.js',
   './js/vendor/jspdf.umd.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png'

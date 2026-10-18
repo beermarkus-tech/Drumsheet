@@ -1,39 +1,69 @@
-// --- PDF EXPORT ---
-// The sheet is laid out in a hidden, isolated iframe at A4 size (so the editor's
-// CSS can't interfere), split into pages by measuring real row heights, then
-// each page is rasterized (html2canvas) into a PDF (jsPDF) that is downloaded
-// directly. Every page repeats the song title/band/BPM and the table header.
-// Both libraries are vendored in js/vendor and only loaded on first use.
+// --- PDF EXPORT (vector) ---
+// The sheet is drawn straight into an A4 PDF with jsPDF's vector primitives
+// (lines, filled rectangles, text), so it stays sharp at any zoom and the text
+// is real text. Layout mirrors the editor: rows separated by dark grey, the
+// Structure/Lyrics/Bars columns by light grey, each bar edged in black (3px),
+// quarter-note lines dark grey, e/&/a lines light grey, and a 3px black line
+// where a new section starts. Lines are drawn after all fills, thin before
+// thick, so a thick line is never covered by a thin one.
+// Every page repeats title/band/BPM and the table header; rows that don't fit
+// move to the next page, and a "Bars" group is never split across pages.
+// jsPDF is vendored in js/vendor and only loaded on first use.
 
-const PDF_SCALE = 3;               // raster resolution: 3 x 96dpi ≈ 288dpi
-const PAGE_W = 794, PAGE_H = 1123; // A4 at 96dpi (210 x 297mm)
-const PAGE_PAD = 38;               // 10mm margin
+const MM_PER_PX = 25.4 / 96;              // screen px -> mm (96dpi)
+const PDF = {
+  pageW: 210, pageH: 297, margin: 10,
+  rowH: 28 * MM_PER_PX,                   // same 28px rows as the old print sheet
+  head1H: 5.2, head2H: 3.7,               // "BAR 1" row, "1 e & a" row
+  thin: 1 * MM_PER_PX, medium: 2 * MM_PER_PX, thick: 3 * MM_PER_PX
+};
 
-function loadScript(win, src) {
+function loadScript(src) {
   return new Promise((resolve, reject) => {
-    const s = win.document.createElement('script');
-    s.src = new URL(src, location.href).href;
+    const s = document.createElement('script');
+    s.src = src;
     s.onload = resolve;
     s.onerror = () => reject(new Error('Could not load ' + src));
-    win.document.head.appendChild(s);
+    document.head.appendChild(s);
   });
 }
 
-// Ghost (repeat) bars are greyscale on screen via a CSS filter, which html2canvas
-// can't draw, so convert their cell colors to grey here.
-function greyBarHTML(bar) {
-  const clone = bar.cloneNode(true);
-  if (clone.getAttribute('data-repeat') === 'true') {
-    clone.querySelectorAll('.grid-cell').forEach(cell => {
-      const m = cell.style.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-      if (m) {
-        const y = Math.round(0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3]);
-        cell.style.backgroundColor = `rgb(${y}, ${y}, ${y})`;
-      }
-    });
-  }
-  clone.querySelectorAll('.cell-selected').forEach(c => c.classList.remove('cell-selected'));
-  return clone.outerHTML;
+// Any CSS color (hex, rgb(), named) -> [r, g, b]
+const colorCtx = document.createElement('canvas').getContext('2d');
+function rgbOf(css, fallback = [0, 0, 0]) {
+  if (!css) return fallback;
+  colorCtx.fillStyle = '#010203';
+  colorCtx.fillStyle = css;
+  const v = colorCtx.fillStyle;
+  if (v === '#010203' && css.replace(/\s/g, '') !== '#010203') return fallback;
+  if (v[0] === '#') return [1, 3, 5].map(i => parseInt(v.substr(i, 2), 16));
+  const m = v.match(/(\d+(\.\d+)?)/g);
+  return m ? m.slice(0, 3).map(Number) : fallback;
+}
+
+// Ghost (repeat) bars are drawn at 40% strength, greyscale, like on screen
+function ghost(rgb) {
+  const y = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+  const v = Math.round(255 - 0.4 * (255 - y));
+  return [v, v, v];
+}
+
+// --- GATHER (from the editor) ---
+function barModel(bar) {
+  const lane = (cells) => [...cells].map(cell => ({
+    start: parseInt(cell.id.split('_c')[1]),                 // 1..16
+    slots: 16 / (parseInt(bar.getAttribute('data-subd')) || 8),
+    sym: cell.innerText.trim(),
+    color: cell.style.backgroundColor
+  }));
+  const split = bar.getAttribute('data-split') === 'true';
+  return {
+    repeat: bar.getAttribute('data-repeat') === 'true',
+    split,
+    lanes: split
+      ? [lane(bar.querySelectorAll('.sub-line.upper .grid-cell')), lane(bar.querySelectorAll('.sub-line.lower .grid-cell'))]
+      : [lane(bar.querySelectorAll(':scope > .grid-cell'))]
+  };
 }
 
 function gatherSheet() {
@@ -44,187 +74,230 @@ function gatherSheet() {
   };
 
   const rows = [];
-  document.querySelectorAll('.editor-row').forEach(row => {
+  document.querySelectorAll('#rows-container .editor-row').forEach(row => {
     const structSelect = row.querySelector('.struct-select');
     const lyricsInput = row.querySelector('.lyrics-input');
-    const structText = structSelect.options[structSelect.selectedIndex].text;
     rows.push({
-      struct: { text: structText === '-' ? '' : structText, color: structSelect.style.color },
+      struct: { text: structSelect.value, color: structSelect.style.color },
       lyrics: { text: lyricsInput.value, color: lyricsInput.style.color },
-      bar1: greyBarHTML(row.querySelector('#bar-1')),
-      bar2: greyBarHTML(row.querySelector('#bar-2'))
+      bars: row.querySelector('.bars-select').value,
+      bar1: barModel(row.querySelector('#bar-1')),
+      bar2: barModel(row.querySelector('#bar-2'))
     });
   });
 
-  // A new section starts where a (non-empty) structure differs from the row above
+  const structs = rows.map(r => r.struct.text);
+  const groups = computeBarGroups(rows.map(r => ({ bars: r.bars, struct: r.struct.text })));
   rows.forEach((row, i) => {
-    row.sectionStart = i > 0 && row.struct.text !== '' && row.struct.text !== rows[i - 1].struct.text;
+    row.sectionStart = isSectionStart(structs, i);
+    row.groupSpan = groups[i].span;
+    row.groupCovered = groups[i].covered;
   });
   return { meta, rows };
 }
 
-function sheetCSS() {
-  // Use the editor's grid line colors so the sheet matches the screen
-  const rootStyle = getComputedStyle(document.documentElement);
-  const lineVar = (name, fallback) => rootStyle.getPropertyValue(name).trim() || fallback;
-  const LINE_STRONG = lineVar('--line-strong', '#000000');
-  const LINE_DARK = lineVar('--line-dark', '#555555');
-  const LINE_LIGHT = lineVar('--line-light', '#bbbbbb');
-
-  return `
-    * { box-sizing: border-box; }
-    body { margin: 0; background: white; font-family: 'Segoe UI', Tahoma, sans-serif; }
-
-    .page { width: ${PAGE_W}px; height: ${PAGE_H}px; padding: ${PAGE_PAD}px; background: white; overflow: hidden; }
-
-    /* --- HEADER INFO (repeated on every page) --- */
-    .song-header { border-bottom: 2px solid #000; margin-bottom: 15px; padding-bottom: 5px; display: flex; align-items: flex-end; }
-    .song-header-main { flex: 1; min-width: 0; }
-    .song-title { font-size: 24px; font-weight: bold; margin: 0; text-transform: uppercase; }
-    .song-meta { margin-top: 5px; font-size: 14px; font-weight: bold; color: #333; }
-    .page-no { font-size: 11px; color: #666; white-space: nowrap; }
-
-    /* --- TABLE LAYOUT --- */
-    /* Lines mirror the editor: rows are separated by dark grey, the Structure
-       and Lyrics columns by light grey, each bar is edged in black (3px, shared
-       between bar 1 and 2), quarter-note lines are dark grey and e/&/a lines
-       light grey. A new section (e.g. Chorus -> Solo) starts with a black line
-       as thick as the bar edges. border-collapse merges touching borders into
-       one line (the wider one wins), so nothing is drawn twice. Grid cells
-       themselves have no borders; the 16th ruler is an overlay, like on screen. */
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid ${LINE_DARK}; }
-
-    col.c-struct { width: 10%; }
-    col.c-lyrics { width: 40%; }
-    col.c-bar    { width: 25%; }
-
-    tr { height: 28px; }
-    tr.head-row { height: 14px; }
-
-    /* --- CELLS --- */
-    th, td { padding: 0; vertical-align: middle; border: 1px solid ${LINE_DARK}; }
-    th {
-      background: #ddd; padding: 4px;
-      font-size: 11px; text-transform: uppercase; font-weight: bold;
-    }
-    .th-struct, .td-struct, .th-lyrics, .td-lyrics { border-right: 1px solid #ccc; }
-    .th-bar, .td-grid { border-left: 3px solid ${LINE_STRONG}; border-right: 3px solid ${LINE_STRONG}; }
-    tr.section-start > td { border-top: 3px solid ${LINE_STRONG}; }
-
-    .td-struct { text-align: center; font-weight: bold; font-size: 12px; padding: 2px; background:#fff; }
-    .td-lyrics { padding: 0 5px; font-size: 12px; font-style: italic; white-space: nowrap; overflow: hidden; background:#fff; }
-    .td-grid { background: #fff; }
-
-    /* --- GRID INTERNALS --- */
-    .bar-container { display: flex; position: relative; width: 100%; height: 28px; }
-    .bar-container.header-container { height: 14px; background: #e0e0e0; }
-    .bar-container.repeat-mode { opacity: 0.4; }
-
-    /* Cells share the bar width in proportion to how many 16ths they span */
-    .grid-cell {
-      display: flex; justify-content: center; align-items: center;
-      flex: var(--slots, 1) 1 0px; min-width: 0;
-      font-size: 12px; font-weight: bold;
-    }
-
-    /* Always-visible 16th ruler (same markup as the editor) */
-    .bar-gridlines { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 2; }
-    .grid-tick { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid ${LINE_LIGHT}; }
-    .grid-tick.strong { border-left: 2px solid ${LINE_DARK}; }
-
-    /* Header count: 1/2/3/4 bold, e/&/a regular */
-    .header-cell { font-size: 9px; color: #333; }
-    .header-cell.minor { font-weight: normal; }
-
-    /* --- SPLIT BARS --- */
-    .bar-container.split-mode { flex-direction: column; }
-    .sub-line { display: flex; flex: 1; width: 100%; min-height: 0; }
-    .sub-line.upper { border-bottom: 1px solid ${LINE_LIGHT}; }
-    .sub-line .grid-cell { font-size: 10px; }
-  `;
-}
-
-function headerBarHTML() {
-  const counts = ['1', 'e', '&', 'a'];
-  let cells = '';
-  for (let i = 0; i < 16; i++) {
-    const minor = i % 4 !== 0;
-    cells += `<div class="grid-cell header-cell${minor ? ' minor' : ''}" style="--slots:1;">${minor ? counts[i % 4] : (i / 4 + 1)}</div>`;
+// --- PAGINATION ---
+// Units are bar groups (kept together) or single rows.
+function paginate(rows, rowsPerPage) {
+  const units = [];
+  for (let i = 0; i < rows.length;) {
+    const n = Math.max(1, rows[i].groupSpan);
+    units.push(rows.slice(i, i + n));
+    i += n;
   }
-  return `<div class="bar-container header-container">${cells}${generateBarGridlines()}</div>`;
-}
-
-// One page: header + table with the given rows. Structure/Lyrics boxes are
-// merged vertically within the page (a box running over a page break simply
-// continues, with its label repeated, on the next page). merge=false is used
-// while measuring.
-function pageHTML(meta, rows, pageNo, pageCount, merge = true) {
-  const spans = rows.map(() => ({ struct: 1, lyrics: 1 }));
-  if (merge) {
-    for (let i = rows.length - 1; i > 0; i--) {
-      const r = rows[i], p = rows[i - 1];
-      if (r.struct.text !== '' && r.struct.text === p.struct.text) { spans[i - 1].struct += spans[i].struct; spans[i].struct = 0; }
-      if (r.lyrics.text !== '' && r.lyrics.text === p.lyrics.text) { spans[i - 1].lyrics += spans[i].lyrics; spans[i].lyrics = 0; }
-    }
-  }
-
-  const body = rows.map((row, i) => {
-    const structTd = spans[i].struct ? `<td class="td-struct" rowspan="${spans[i].struct}" style="color:${escapeHtml(row.struct.color)}">${escapeHtml(row.struct.text)}</td>` : '';
-    const lyricsTd = spans[i].lyrics ? `<td class="td-lyrics" rowspan="${spans[i].lyrics}" style="color:${escapeHtml(row.lyrics.color)}">${escapeHtml(row.lyrics.text)}</td>` : '';
-    return `<tr${row.sectionStart ? ' class="section-start"' : ''}>${structTd}${lyricsTd}<td class="td-grid">${row.bar1}</td><td class="td-grid">${row.bar2}</td></tr>`;
-  }).join('');
-
-  return `
-    <div class="song-header">
-      <div class="song-header-main">
-        <div class="song-title">${escapeHtml(meta.title)}</div>
-        <div class="song-meta">${escapeHtml(meta.band)} &nbsp;|&nbsp; BPM: ${escapeHtml(meta.bpm)}</div>
-      </div>
-      ${pageCount > 1 ? `<div class="page-no">Page ${pageNo} / ${pageCount}</div>` : ''}
-    </div>
-    <table>
-      <colgroup><col class="c-struct"><col class="c-lyrics"><col class="c-bar"><col class="c-bar"></colgroup>
-      <thead>
-        <tr class="head-row">
-          <th rowspan="2" class="th-struct">Structure</th>
-          <th rowspan="2" class="th-lyrics">Lyrics</th>
-          <th class="th-bar">Bar 1</th>
-          <th class="th-bar">Bar 2</th>
-        </tr>
-        <tr class="head-row">
-          <td class="td-grid">${headerBarHTML()}</td>
-          <td class="td-grid">${headerBarHTML()}</td>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>`;
-}
-
-// Greedy pagination: keep adding rows while the table still ends inside the
-// page's bottom margin.
-function paginate(doc, meta, rows) {
-  const probe = doc.createElement('div');
-  probe.className = 'page';
-  doc.body.appendChild(probe);
-  const fits = (pageRows) => {
-    probe.innerHTML = pageHTML(meta, pageRows, 1, 2, false);
-    const bottom = probe.querySelector('table').getBoundingClientRect().bottom - probe.getBoundingClientRect().top;
-    return bottom <= PAGE_H - PAGE_PAD;
-  };
-
   const pages = [];
   let current = [];
-  rows.forEach(row => {
-    if (current.length && !fits(current.concat([row]))) {
-      pages.push(current);
-      current = [row];
-    } else {
-      current.push(row);
-    }
+  units.forEach(unit => {
+    if (current.length && current.length + unit.length > rowsPerPage) { pages.push(current); current = []; }
+    current = current.concat(unit);
   });
   if (current.length || pages.length === 0) pages.push(current);
-  probe.remove();
   return pages;
+}
+
+// Vertical merges within one page: Structure and Lyrics boxes merge equal
+// consecutive (non-empty) texts but never across a section start; Bars boxes
+// follow the groups.
+function pageSpans(rows) {
+  const spans = rows.map(r => ({ struct: 1, lyrics: 1, bars: r.groupCovered ? 0 : Math.max(1, r.groupSpan) }));
+  for (let i = rows.length - 1; i > 0; i--) {
+    const r = rows[i], p = rows[i - 1];
+    if (r.sectionStart) continue;
+    if (r.struct.text !== '' && r.struct.text === p.struct.text) { spans[i - 1].struct += spans[i].struct; spans[i].struct = 0; }
+    if (r.lyrics.text !== '' && r.lyrics.text === p.lyrics.text) { spans[i - 1].lyrics += spans[i].lyrics; spans[i].lyrics = 0; }
+  }
+  return spans;
+}
+
+// --- DRAWING ---
+function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
+  const { margin } = PDF;
+  const lines = { light: [], dark: [], strong: [] };   // drawn after fills, thin -> thick
+  const texts = [];                                    // drawn on top of everything
+  const addLine = (kind, x1, y1, x2, y2, rgb, w) => lines[kind].push({ x1, y1, x2, y2, rgb, w });
+
+  const fillRect = (x, y, w, h, rgb) => { pdf.setFillColor(...rgb); pdf.rect(x, y, w, h, 'F'); };
+  const text = (str, x, y, opts, font, size, rgb) => texts.push(() => {
+    pdf.setFont('helvetica', font); pdf.setFontSize(size); pdf.setTextColor(...rgb);
+    pdf.text(str, x, y, { baseline: 'middle', ...opts });
+  });
+  const fitText = (str, maxW) => {          // clip like the editor (no wrapping)
+    if (pdf.getTextWidth(str) <= maxW) return str;
+    while (str.length && pdf.getTextWidth(str) > maxW) str = str.slice(0, -1);
+    return str;
+  };
+
+  // --- Song header ---
+  let y = margin;
+  text(meta.title.toUpperCase(), margin, y + 3.6, {}, 'bold', 18, [0, 0, 0]);
+  text(`${meta.band}  |  BPM: ${meta.bpm}`, margin, y + 9.5, {}, 'bold', 10.5, [51, 51, 51]);
+  if (pageCount > 1) text(`Page ${pageNo} / ${pageCount}`, PDF.pageW - margin, y + 9.5, { align: 'right' }, 'normal', 8, [102, 102, 102]);
+  y += 12.6;
+  pdf.setDrawColor(0, 0, 0); pdf.setLineWidth(PDF.medium);
+  pdf.line(margin, y, PDF.pageW - margin, y);
+  y += 4;
+
+  // --- Table header ---
+  const top = y;
+  const headH = PDF.head1H + PDF.head2H;
+  fillRect(L.xStruct, top, L.xBar1 - L.xStruct, headH, [221, 221, 221]);
+  [L.xBar1, L.xBar2].forEach(x => {
+    fillRect(x, top, L.barW, PDF.head1H, [221, 221, 221]);
+    fillRect(x, top + PDF.head1H, L.barW, PDF.head2H, [224, 224, 224]);
+  });
+  const headLabel = (str, x, w) => text(str, x + w / 2, top + headH / 2, { align: 'center' }, 'bold', 7.5, [0, 0, 0]);
+  headLabel('STRUCTURE', L.xStruct, L.structW);
+  headLabel('LYRICS', L.xLyrics, L.lyricsW);
+  headLabel('BARS', L.xBars, L.barsW);
+  ['BAR 1', 'BAR 2'].forEach((label, b) => {
+    const x = b ? L.xBar2 : L.xBar1;
+    text(label, x + L.barW / 2, top + PDF.head1H / 2, { align: 'center' }, 'bold', 7.5, [0, 0, 0]);
+    const counts = ['1', 'e', '&', 'a'];
+    for (let i = 0; i < 16; i++) {
+      const minor = i % 4 !== 0;
+      text(minor ? counts[i % 4] : String(i / 4 + 1), x + (i + 0.5) * L.barW / 16, top + PDF.head1H + PDF.head2H / 2,
+        { align: 'center' }, minor ? 'normal' : 'bold', 6, [51, 51, 51]);
+    }
+    addRuler(x, top + PDF.head1H, PDF.head2H, false);
+  });
+  addLine('dark', L.xBar1, top + PDF.head1H, L.xEnd, top + PDF.head1H, L.dark, PDF.thin);   // under "BAR 1/2"
+  addLine('dark', L.xStruct, top, L.xEnd, top, L.dark, PDF.thin);                           // table top
+  addLine('dark', L.xStruct, top + headH, L.xEnd, top + headH, L.dark, PDF.thin);           // header bottom
+  addLine('light', L.xLyrics, top, L.xLyrics, top + headH, L.colLine, PDF.thin);
+  addLine('light', L.xBars, top, L.xBars, top + headH, L.colLine, PDF.thin);
+
+  // 16th ruler for one bar: light e/&/a ticks, dark quarter ticks
+  function addRuler(x, yTop, h, isGhost) {
+    for (let k = 1; k <= 15; k++) {
+      const strong = k % 4 === 0;
+      const tx = x + k * L.barW / 16;
+      if (strong) addLine('dark', tx, yTop, tx, yTop + h, isGhost ? ghost(L.dark) : L.dark, PDF.medium);
+      else addLine('light', tx, yTop, tx, yTop + h, isGhost ? ghost(L.light) : L.light, PDF.thin);
+    }
+  }
+
+  // --- Rows ---
+  const spans = pageSpans(rows);
+  const bodyTop = top + headH;
+  const rowY = i => bodyTop + i * PDF.rowH;
+
+  rows.forEach((row, i) => {
+    const y0 = rowY(i);
+    const sp = spans[i];
+
+    if (sp.struct) {
+      const h = sp.struct * PDF.rowH;
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5);
+      const maxLines = Math.max(1, Math.floor(h / 3.6));
+      const wrapped = pdf.splitTextToSize(row.struct.text, L.structW - 1.5).slice(0, maxLines);
+      text(wrapped, L.xStruct + L.structW / 2, y0 + h / 2 - (wrapped.length - 1) * 1.8, { align: 'center' }, 'bold', 8.5, rgbOf(row.struct.color));
+      addLine('dark', L.xStruct, y0 + h, L.xLyrics, y0 + h, L.dark, PDF.thin);
+    }
+    if (sp.lyrics) {
+      const h = sp.lyrics * PDF.rowH;
+      pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8.5);
+      text(fitText(row.lyrics.text, L.lyricsW - 2.6), L.xLyrics + 1.3, y0 + h / 2, {}, 'italic', 8.5, rgbOf(row.lyrics.color));
+      addLine('dark', L.xLyrics, y0 + h, L.xBars, y0 + h, L.dark, PDF.thin);
+    }
+    if (sp.bars) {
+      const h = sp.bars * PDF.rowH;
+      const value = row.groupCovered ? '' : (row.groupSpan ? row.bars : '');
+      if (value) text(value, L.xBars + L.barsW / 2, y0 + h / 2, { align: 'center' }, 'bold', 9, [0, 0, 0]);
+      addLine('dark', L.xBars, y0 + h, L.xBar1, y0 + h, L.dark, PDF.thin);
+    }
+
+    [row.bar1, row.bar2].forEach((bar, b) => drawBar(bar, b ? L.xBar2 : L.xBar1, y0));
+    addLine('dark', L.xBar1, y0 + PDF.rowH, L.xEnd, y0 + PDF.rowH, L.dark, PDF.thin);
+
+    if (row.sectionStart && i > 0) addLine('strong', L.xStruct, y0, L.xEnd, y0, L.strong, PDF.thick);
+  });
+
+  function drawBar(bar, x, y0) {
+    const laneH = PDF.rowH / bar.lanes.length;
+    const cellW = L.barW / 16;
+    bar.lanes.forEach((cells, laneIdx) => {
+      const ly = y0 + laneIdx * laneH;
+      cells.forEach(cell => {
+        const cx = x + (cell.start - 1) * cellW, cw = cell.slots * cellW;
+        if (cell.color) {
+          const rgb = rgbOf(cell.color, null);
+          if (rgb) fillRect(cx, ly, cw, laneH, bar.repeat ? ghost(rgb) : rgb);
+        }
+        if (cell.sym) {
+          let size = bar.split ? 7 : 8.5;
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(size);
+          while (size > 4 && pdf.getTextWidth(cell.sym) > cw - 0.6) { size -= 0.5; pdf.setFontSize(size); }
+          text(cell.sym, cx + cw / 2, ly + laneH / 2, { align: 'center' }, 'bold', size, bar.repeat ? [153, 153, 153] : [0, 0, 0]);
+        }
+      });
+    });
+    if (bar.split) addLine('light', x, y0 + laneH, x + L.barW, y0 + laneH, bar.repeat ? ghost(L.light) : L.light, PDF.thin);
+    addRuler(x, y0, PDF.rowH, bar.repeat);
+  }
+
+  // --- Column lines + frame ---
+  const bottom = rowY(rows.length);
+  addLine('light', L.xLyrics, bodyTop, L.xLyrics, bottom, L.colLine, PDF.thin);
+  addLine('light', L.xBars, bodyTop, L.xBars, bottom, L.colLine, PDF.thin);
+  addLine('dark', L.xStruct, top, L.xStruct, bottom, L.dark, PDF.thin);
+  addLine('dark', L.xStruct, bottom, L.xBar1, bottom, L.dark, PDF.thin);
+  [L.xBar1, L.xBar2, L.xEnd].forEach(x => addLine('strong', x, top, x, bottom, L.strong, PDF.thick));
+
+  // --- Stroke: thin first, thick last; then all text on top ---
+  pdf.setLineCap('butt');
+  ['light', 'dark', 'strong'].forEach(kind => lines[kind].forEach(l => {
+    pdf.setDrawColor(...l.rgb); pdf.setLineWidth(l.w);
+    pdf.line(l.x1, l.y1, l.x2, l.y2);
+  }));
+  texts.forEach(draw => draw());
+}
+
+function pdfLayout(pdf) {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const lineVar = (name, fallback) => rgbOf(rootStyle.getPropertyValue(name).trim(), fallback);
+
+  const { margin, pageW } = PDF;
+  const tableW = pageW - 2 * margin;
+  const structW = tableW * 0.10;
+  const barW = tableW * 0.25;
+  // "Bars" is only as wide as its header label needs
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.5);
+  const barsW = pdf.getTextWidth('BARS') + 2.4;
+  const lyricsW = tableW - structW - barsW - 2 * barW;
+
+  const xStruct = margin;
+  const xLyrics = xStruct + structW;
+  const xBars = xLyrics + lyricsW;
+  const xBar1 = xBars + barsW;
+  const xBar2 = xBar1 + barW;
+  return {
+    structW, lyricsW, barsW, barW, xStruct, xLyrics, xBars, xBar1, xBar2, xEnd: xBar2 + barW,
+    strong: lineVar('--line-strong', [0, 0, 0]),
+    dark: lineVar('--line-dark', [85, 85, 85]),
+    light: lineVar('--line-light', [187, 187, 187]),
+    colLine: [204, 204, 204]
+  };
 }
 
 function pdfFileName(meta) {
@@ -232,51 +305,35 @@ function pdfFileName(meta) {
   return (base || 'Drumsheet') + '.pdf';
 }
 
+async function buildPdf() {
+  if (!window.jspdf) await loadScript('js/vendor/jspdf.umd.min.js');
+  const { meta, rows } = gatherSheet();
+  const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  pdf.setProperties({ title: `${meta.title} – ${meta.band}`, creator: 'Drumsheet' });
+  const L = pdfLayout(pdf);
+
+  const tableTop = PDF.margin + 12.6 + 4 + PDF.head1H + PDF.head2H;
+  const rowsPerPage = Math.floor((PDF.pageH - PDF.margin - tableTop) / PDF.rowH);
+  const pages = paginate(rows, rowsPerPage);
+  pages.forEach((pageRows, i) => {
+    if (i > 0) pdf.addPage();
+    drawSheetPage(pdf, meta, pageRows, i + 1, pages.length, L);
+  });
+  return { pdf, meta };
+}
+
 async function downloadPdf() {
   const btn = document.getElementById('printBtn');
   const originalHTML = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="material-icons">hourglass_empty</span> Creating PDF…';
-
-  const frame = document.createElement('iframe');
-  frame.setAttribute('aria-hidden', 'true');
-  frame.style.cssText = `position:fixed; left:-${PAGE_W + 100}px; top:0; width:${PAGE_W}px; height:${PAGE_H}px; border:0;`;
-  document.body.appendChild(frame);
-
   try {
-    const { meta, rows } = gatherSheet();
-
-    const doc = frame.contentDocument;
-    doc.open();
-    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${sheetCSS()}</style></head><body></body></html>`);
-    doc.close();
-
-    if (!window.jspdf) await loadScript(window, 'js/vendor/jspdf.umd.min.js');
-    await loadScript(frame.contentWindow, 'js/vendor/html2canvas.min.js');
-
-    const pages = paginate(doc, meta, rows);
-    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-
-    for (let i = 0; i < pages.length; i++) {
-      const page = doc.createElement('div');
-      page.className = 'page';
-      page.innerHTML = pageHTML(meta, pages[i], i + 1, pages.length);
-      doc.body.appendChild(page);
-      const canvas = await frame.contentWindow.html2canvas(page, {
-        scale: PDF_SCALE, backgroundColor: '#ffffff', logging: false,
-        width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W
-      });
-      if (i > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-      page.remove();
-    }
-
+    const { pdf, meta } = await buildPdf();
     pdf.save(pdfFileName(meta));
   } catch (e) {
     console.error(e);
     alert('Could not create the PDF: ' + e.message);
   } finally {
-    frame.remove();
     btn.disabled = false;
     btn.innerHTML = originalHTML;
   }
