@@ -38,10 +38,6 @@ const PALETTE = [
 // Mapped for backward compatibility with Config Modal (Symbols use Strong colors)
 const SYMBOL_COLORS = PALETTE.map(p => ({ name: p.name, hex: p.strong }));
 
-// Placeholder for an "unsaved changes" indicator feature; grid.js calls this
-// on background-color edits and ghost-pastes but nothing currently renders it.
-window.markUnsaved = function () {};
-
 // --- INITIALIZATION ---
 window.onload = function() {
   // 1. Generate Grid Headers
@@ -50,8 +46,9 @@ window.onload = function() {
       generateHeaderBeats('header-beats-2');
   }
 
-  // 2. Edit sidebar starts with nothing selected
+  // 2. Edit sidebar starts with nothing selected; edits autosave
   clearSelection();
+  initAutosave();
 
   // 3. Register service worker for PWA install / offline shell
   if ('serviceWorker' in navigator) {
@@ -72,6 +69,14 @@ window.onload = function() {
 
 // --- KEYBOARD SHORTCUTS ---
 document.addEventListener('keydown', function(e) {
+  // CTRL + S = save now (works everywhere, also while typing; stops the
+  // browser's "Save page" dialog)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    flushSave();
+    return;
+  }
+
   // 1. GUARD CLAUSE: Do nothing if typing in an input or textarea
   // This allows normal copy/paste of text in Lyrics and Popup Comment
   const activeTag = document.activeElement.tagName.toLowerCase();

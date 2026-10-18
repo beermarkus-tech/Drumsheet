@@ -70,21 +70,18 @@ window.firebaseReady = (async () => {
     };
   }
 
-  async function saveSongRows(id, rows) {
-    await updateDoc(doc(db, 'songs', id), { rows, updatedAt: serverTimestamp() });
+  // Autosave writes title/band/bpm/beat and rows together in one update.
+  async function saveSong(id, data) {
+    await updateDoc(doc(db, 'songs', id), { ...data, updatedAt: serverTimestamp() });
     return true;
   }
 
-  async function updateSongMeta(id, newMeta) {
-    const dupes = await getDocs(query(SONGS_COL, where('title', '==', newMeta.title)));
-    const conflict = dupes.docs.find(d => d.id !== id);
-    if (conflict) throw new Error('A song with the new title already exists.');
-
-    await updateDoc(doc(db, 'songs', id), newMeta);
-    return { ...newMeta, id };
+  async function isTitleTaken(title, exceptId) {
+    const dupes = await getDocs(query(SONGS_COL, where('title', '==', title)));
+    return dupes.docs.some(d => d.id !== exceptId);
   }
 
   window.Firebase = {
-    getConfig, saveConfig, listSongs, createSong, loadSong, saveSongRows, updateSongMeta
+    getConfig, saveConfig, listSongs, createSong, loadSong, saveSong, isTitleTaken
   };
 })();

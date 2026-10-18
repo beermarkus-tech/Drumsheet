@@ -348,15 +348,13 @@ select.color-select option { font-weight: normal; }
     font-size: 0.7rem; /* Slightly smaller font for split rows */
 }
 
-#saveSongBtn {
-    background-color: var(--danger) !important; /* Uses the red variable #e74c3c */
-    color: white !important;
-    border-color: #c0392b !important; /* Slightly darker red border */
-}
-
-#saveSongBtn:hover {
-    background-color: #c0392b !important; /* Darker red on hover */
-}
+/* Autosave status (replaces the old Save Song button) */
+.save-status { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 0.85rem; color: #555; padding: 0 5px; }
+.save-status .material-icons { font-size: 18px; }
+.save-status.saved .material-icons { color: #27ae60; }
+.save-status.saving .material-icons { color: var(--accent); }
+.save-status.offline, .save-status.warning { color: #b9770e; }
+.save-status.error { color: var(--danger); font-weight: bold; }
 
 .bar-container.repeat-mode {
     opacity: 0.4; /* Make it faint */

@@ -4,6 +4,23 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 08
+
+- **Autosave replaces manual saving.** The "Save Song" and "Update Info"
+  buttons are gone. Any change (cells, symbols, colors, subdivision,
+  split, paste, clear, rows, structure, lyrics, title/band/BPM) is saved
+  300ms after the last edit, title/band/BPM and rows together in one write.
+  Opening a song or just selecting cells writes nothing.
+- Status in the top-right replaces the Save button: "All changes saved",
+  "Saving…", "Offline – will sync when back online", or a warning/error.
+- Edits made while a save is in progress are saved right after it; failed
+  saves retry automatically (2s, 4s, … up to 30s) without losing edits.
+- Pending edits are saved before opening/creating another song, when the
+  app goes to the background, and the browser warns before closing the tab
+  with unsaved changes. Ctrl+S saves immediately (also while typing).
+- Title rules kept: an empty title or one used by another song isn't
+  applied (a warning says so); everything else still saves.
+
 ## Build 07
 
 - The cell edit popup is now a permanent sidebar on the right (280px),
@@ -92,8 +109,8 @@ data migrated into Firestore.
   (`--line-strong`/`--line-dark`/`--line-light`) directly in the app.
 - Bring the three-tier grid line system to the print stylesheet.
 - Delete song, duplicate/"Save As", search in Load Song list.
-- Autosave / dirty-state indicator (`window.markUnsaved` is currently a
-  no-op stub).
+- Revision snapshots for autosave (e.g. `songs/{id}/revisions` on open and
+  every ~10 min) so a bad edit can be rolled back.
 - Realtime sync (`onSnapshot`) and offline editing via Firestore's built-in
   persistence.
 - Deep links to a specific song (`?song=<id>`).

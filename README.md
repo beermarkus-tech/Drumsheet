@@ -10,10 +10,14 @@ Google Sheet (see `legacy-gas/` for the original source).
 - `js/firebase-init.js` is the only file that talks to Firebase. It's an ES
   module that initializes the Firebase Web SDK (loaded from Google's CDN)
   and exposes `window.Firebase.{getConfig, saveConfig, listSongs, createSong,
-  loadSong, saveSongRows, updateSongMeta}` plus a `window.firebaseReady`
+  loadSong, saveSong, isTitleTaken}` plus a `window.firebaseReady`
   promise. Every other script is a classic (non-module) script, unchanged in
   spirit from the original app, and just awaits `window.firebaseReady` before
   calling into `window.Firebase`.
+- Songs autosave (`js/data.js`, "AUTOSAVE"): any edit schedules a save
+  300ms after the last change; the whole song (meta + rows) is written in one
+  update, and only if it differs from what was last saved. There is no
+  manual save button (Ctrl+S forces an immediate save).
 - `manifest.json` + `sw.js` make it installable and give it an offline app
   shell (the UI loads with no connection; editing songs still needs Firestore).
 - Firestore layout:

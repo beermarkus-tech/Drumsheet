@@ -17,7 +17,7 @@
 
   <div class="app-header">
     <div class="app-title">DRUMSHEET 🥁</div>
-    <div class="app-version">Build 07</div>
+    <div class="app-version">Build 08</div>
   </div>
 
   <div class="nav-bar">
@@ -27,7 +27,7 @@
       <span class="material-icons">print</span> Print Sheet
     </button>
     <button onclick="openConfigModal()"><span class="material-icons">settings</span> Configure</button>
-    <button id="saveSongBtn" onclick="saveCurrentSong()" style="margin-left:auto; display:none;" class="primary"><span class="material-icons">save</span> Save Song</button>
+    <div id="save-status" class="save-status" style="display:none;"></div>
   </div>
 
   <div class="workspace">
@@ -41,10 +41,6 @@
 
       <label style="font-weight:bold; margin-left:10px;">BPM:</label>
       <input id="disp-bpm" type="number" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px; width: 60px;">
-
-      <button id="btn-update-meta" onclick="saveSongMetadata()" style="margin-left:auto; padding: 4px 10px; font-size: 0.8rem;">
-        <span class="material-icons" style="font-size: 14px;">check</span> Update Info
-      </button>
     </div>
 
     <div class="editor-header">
