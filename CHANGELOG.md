@@ -4,6 +4,12 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 22
+
+- The thick section line (e.g. Verse → Chorus) is now also shown in the
+  editor: 3px black, same rule and same rows as in the PDF, updating live
+  when structures change. Row heights don't change.
+
 ## Build 21
 
 - **Preview button** next to "Download PDF": builds the PDF and shows its

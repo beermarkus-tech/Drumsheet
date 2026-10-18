@@ -52,11 +52,14 @@ function setBarsButton(btn, bars, mult) {
   if (btn.textContent !== (label || '-')) btn.textContent = label || '-';
 }
 
+// Also marks rows that start a new section (thick line on top, like the PDF)
 window.refreshBarGroups = function () {
   const rows = [...document.querySelectorAll('#rows-container .editor-row')];
-  const groups = computeBarGroups(rows.map(r => ({
+  const structs = rows.map(r => r.querySelector('.struct-select').value);
+  rows.forEach((row, i) => row.classList.toggle('section-start', isSectionStart(structs, i)));
+  const groups = computeBarGroups(rows.map((r, i) => ({
     bars: r.querySelector('.bars-btn').dataset.bars,
-    struct: r.querySelector('.struct-select').value
+    struct: structs[i]
   })));
   let cleared = false;
   rows.forEach((row, i) => {

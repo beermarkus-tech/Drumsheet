@@ -63,6 +63,15 @@ button:hover { background: #f0f0f0; }
   height: 30px; min-height: 30px; flex-shrink: 0;
 }
 
+/* New section (e.g. Verse -> Chorus): thick line on top of the row, as thick
+   as the bar edges and drawn over everything (no layout shift). Stops before
+   the tools column, like the table in the PDF. */
+.editor-row { position: relative; }
+.editor-row.section-start::before {
+  content: ''; position: absolute; left: 0; right: 50px; top: -2px; height: 3px;
+  background: var(--line-strong); z-index: 5; pointer-events: none;
+}
+
 /* --- COLUMNS CONFIGURATION --- */
 
 /* COL 1: STRUCTURE (Fixed) */
