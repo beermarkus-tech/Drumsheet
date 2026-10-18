@@ -34,6 +34,11 @@ body {
 .nav-bar { background: white; padding: 8px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: center; gap: 10px; flex-shrink: 0; }
 .song-info-bar { background: #eee; padding: 5px 20px; border-bottom: 1px solid #ddd; display: flex; gap: 20px; flex-shrink: 0; align-items: center; }
 
+.app-header-right { display: flex; align-items: center; gap: 12px; }
+.reload-btn { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.5); padding: 3px 10px; font-size: 0.85rem; }
+.reload-btn:hover { background: rgba(255,255,255,0.15); }
+.reload-btn .material-icons { font-size: 18px; }
+
 /* Global Elements */
 button { background: white; border: 1px solid var(--border); padding: 5px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
 button:hover { background: #f0f0f0; }

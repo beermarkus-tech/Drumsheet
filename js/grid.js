@@ -18,6 +18,11 @@ window.addEditorRow = function (data = { structure: '', lyrics: '', gridData: '{
         structOptions += `<option value="${escapeHtml(s.name)}" style="color:${escapeHtml(s.color)}" ${selected}>${escapeHtml(s.name)}</option>`;
       });
   }
+  // Keep a structure that isn't (or no longer is) in the config instead of
+  // silently dropping it, so autosave never erases it.
+  if (data.structure && !(configData.structures || []).some(s => s.name === data.structure)) {
+      structOptions += `<option value="${escapeHtml(data.structure)}" selected>${escapeHtml(data.structure)}</option>`;
+  }
 
   div.innerHTML = `
     <div class="col-struct">

@@ -4,6 +4,31 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 10
+
+- **Reload button** (top right, next to the build number): saves pending
+  edits, checks for a new build, installs it and reloads, so a new build
+  shows up after one tap instead of closing/relaunching the app twice. The
+  service worker now fetches files bypassing the browser's HTTP cache, so
+  a new build never picks up stale copies.
+- **Reopens the last song** on launch (remembered on this device). With no
+  song opened before, the app starts empty; if that song was deleted, too.
+- **Print → PDF download.** "Print Sheet" is now "Download PDF": the sheet
+  is laid out on A4 pages and saved as `Band - Title.pdf` directly, no
+  preview window. Rows that don't fit go to the next page; every page
+  repeats the title, band, BPM (plus "Page x / y") and the table header. A
+  Structure/Lyrics box running over a page break continues, labelled, on
+  the next page. PDF libraries (html2canvas, jsPDF; MIT) are bundled in
+  `js/vendor/` and cached, so export also works offline.
+- **Thick line at each new section** in the PDF (e.g. Chorus → Solo), same
+  3px black as the bar edges.
+- **Structure colors update live** while editing them in Configure. Close
+  without saving reverts; saving also applies renamed structures to the
+  open song.
+- Fix: a row whose structure isn't in the configuration (e.g. renamed or
+  deleted) now keeps it instead of showing "-" (which autosave would then
+  have written back, erasing it).
+
 ## Build 09
 
 - Sidebar: the Symbol and Color lists are always the same height, and the

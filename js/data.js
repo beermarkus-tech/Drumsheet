@@ -7,6 +7,7 @@ async function saveConfiguration() {
   await window.firebaseReady;
   try {
     await window.Firebase.saveConfig(configData);
+    applyConfigurationToEditor();
     btn.innerText = 'Saved!';
     setTimeout(() => { closeModal('configModal'); btn.innerText = originalText; }, 500);
   } catch (e) {
@@ -69,6 +70,7 @@ async function loadSelectedSong(id) {
 function loadEditor(songData) {
   if (!songData) return;
   currentSongMeta = songData.meta;
+  rememberLastSong(songData.meta.id);
 
   document.getElementById('disp-title').value = songData.meta.title ?? '';
   document.getElementById('disp-band').value = songData.meta.band ?? '';

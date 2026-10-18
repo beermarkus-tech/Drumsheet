@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drumsheet-shell-build-09';
+const CACHE_NAME = 'drumsheet-shell-build-10';
 
 const APP_SHELL = [
   './',
@@ -10,13 +10,18 @@ const APP_SHELL = [
   './js/grid.js',
   './js/data.js',
   './js/print.js',
+  './js/vendor/html2canvas.min.js',
+  './js/vendor/jspdf.umd.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    // cache: 'reload' bypasses the browser's HTTP cache, so a new build never
+    // gets stored with stale copies of files that were fetched earlier.
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(APP_SHELL.map((url) => new Request(url, { cache: 'reload' }))))
   );
   self.skipWaiting();
 });

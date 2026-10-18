@@ -56,7 +56,8 @@ window.onload = function() {
   }
 
   // 4. Load Config from Firestore (independent of the above — a Firebase
-  // failure here shouldn't block the rest of the UI from working)
+  // failure here shouldn't block the rest of the UI from working), then reopen
+  // the song that was open last time
   (async () => {
     await window.firebaseReady;
     try {
@@ -64,8 +65,60 @@ window.onload = function() {
     } catch (e) {
       console.error('Failed to load config from Firestore:', e);
     }
+    await restoreLastSong();
   })();
 };
+
+// --- LAST OPEN SONG ---
+// Remembered per device (localStorage) and reopened on the next launch.
+const LAST_SONG_KEY = 'drumsheet.lastSongId';
+
+function rememberLastSong(id) {
+  try { localStorage.setItem(LAST_SONG_KEY, id); } catch (e) {}
+}
+
+async function restoreLastSong() {
+  let id = null;
+  try { id = localStorage.getItem(LAST_SONG_KEY); } catch (e) {}
+  if (!id || currentSongMeta.id) return;
+  try {
+    const songData = await window.Firebase.loadSong(id);
+    if (!currentSongMeta.id) loadEditor(songData); // user may have opened one meanwhile
+  } catch (e) {
+    console.warn('Could not reopen last song:', e);
+    // Forget it only if it's really gone (not when merely offline)
+    if (e.message === 'Song not found.') { try { localStorage.removeItem(LAST_SONG_KEY); } catch (e2) {} }
+  }
+}
+
+// --- RELOAD (load the latest build without closing the app) ---
+async function reloadApp() {
+  const btn = document.getElementById('reloadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-icons">hourglass_empty</span> Updating…';
+  try { await flushSave(); } catch (e) {}
+  try {
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (reg) {
+      await reg.update();
+      // A new build installs (fetching all files fresh) and activates right away
+      // (skipWaiting in sw.js); wait for that before reloading.
+      const sw = reg.installing || reg.waiting;
+      if (sw) {
+        await new Promise(resolve => {
+          if (sw.state === 'activated') return resolve();
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'activated' || sw.state === 'redundant') resolve();
+          });
+          setTimeout(resolve, 15000);
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Update check failed, reloading anyway:', e);
+  }
+  location.reload();
+}
 
 // --- KEYBOARD SHORTCUTS ---
 document.addEventListener('keydown', function(e) {
@@ -117,7 +170,58 @@ document.addEventListener('keydown', function(e) {
 
 // --- MODAL UTILS ---
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-function openConfigModal() { document.getElementById('configModal').style.display = 'flex'; renderStructureRows(); renderSymbolRows(); }
+// Config edits preview live in the editor (e.g. structure colors). Close
+// without saving reverts them; renames are applied to the open song on save.
+let configBackup = null;
+const structureOrigName = new WeakMap();
+
+function openConfigModal() {
+  configBackup = JSON.parse(JSON.stringify(configData));
+  configData.structures.forEach(s => structureOrigName.set(s, s.name));
+  document.getElementById('configModal').style.display = 'flex';
+  renderStructureRows(); renderSymbolRows();
+}
+
+function cancelConfiguration() {
+  if (configBackup) configData = configBackup;
+  configBackup = null;
+  closeModal('configModal');
+  refreshEditorStructures();
+}
+
+function applyConfigurationToEditor() {
+  const renames = {};
+  configData.structures.forEach(s => {
+    const orig = structureOrigName.get(s);
+    if (orig !== undefined && orig !== '' && orig !== s.name) renames[orig] = s.name;
+  });
+  configBackup = null;
+  refreshEditorStructures(renames);
+}
+
+// Rebuild every row's structure dropdown and colors from configData. A row whose
+// structure no longer exists keeps its value (shown as-is) so nothing is lost.
+function refreshEditorStructures(renames = {}) {
+  document.querySelectorAll('#rows-container .editor-row').forEach(row => {
+    const select = row.querySelector('.struct-select');
+    let value = select.value;
+    if (renames[value] !== undefined) value = renames[value];
+
+    const known = configData.structures.find(s => s.name === value);
+    let options = `<option value="">-</option>`;
+    configData.structures.forEach(s => {
+      options += `<option value="${escapeHtml(s.name)}" style="color:${escapeHtml(s.color)}">${escapeHtml(s.name)}</option>`;
+    });
+    if (value && !known) options += `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`;
+
+    if (select.innerHTML !== options) select.innerHTML = options;
+    select.value = value;
+    const color = known ? known.color : 'black';
+    if (select.style.color !== color) select.style.color = color;
+    const lyrics = row.querySelector('.lyrics-input');
+    if (lyrics.style.color !== color) lyrics.style.color = color;
+  });
+}
 function openNewSongModal() {
   document.getElementById('new-title').value = '';
   document.getElementById('new-band').value = '';
@@ -171,9 +275,9 @@ function renderSymbolRows() {
 }
 
 // Config Helpers
-function addStructureRow() { configData.structures.push({ name: '', color: '#000000' }); renderStructureRows(); }
-function updateStructure(idx, f, v) { configData.structures[idx][f] = v; renderStructureRows(); }
-function deleteStructure(idx) { configData.structures.splice(idx, 1); renderStructureRows(); }
+function addStructureRow() { configData.structures.push({ name: '', color: '#000000' }); renderStructureRows(); refreshEditorStructures(); }
+function updateStructure(idx, f, v) { configData.structures[idx][f] = v; renderStructureRows(); refreshEditorStructures(); }
+function deleteStructure(idx) { configData.structures.splice(idx, 1); renderStructureRows(); refreshEditorStructures(); }
 function addSymbolRow() { configData.symbols.push({ symbol: '', meaning: '', color: '#FFFFFF' }); renderSymbolRows(); }
 function updateSymbol(idx, f, v) { configData.symbols[idx][f] = v; renderSymbolRows(); }
 function deleteSymbol(idx) { configData.symbols.splice(idx, 1); renderSymbolRows(); }
