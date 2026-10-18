@@ -4,6 +4,23 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 12
+
+- **PDF: emoji and other symbols print correctly.** The PDF's built-in font
+  only covers Western (Latin-1) characters, so e.g. 💥 came out as "Ø=Ü¥".
+  Any text with other characters (emoji, arrows, curly quotes, other
+  scripts) is now drawn as a small high-resolution image (~400dpi) in the
+  device's own font/emoji style, in the same place; everything else stays
+  vector text. Works in cells, lyrics, structure names and the title.
+- **Duplicate and delete songs** from the Load Song list (icon buttons on
+  each row; tapping the row still opens the song).
+  - Duplicate asks for a title (suggests "Title (copy)", must be unique)
+    and highlights the copy in the list. Duplicating the open song saves
+    its latest edits first.
+  - Delete asks for confirmation. Deleting the open song closes the editor
+    (pending edits for it are discarded) and it won't be reopened on the
+    next launch.
+
 ## Build 11
 
 - **PDF is now real vector graphics**, drawn directly with jsPDF instead of
@@ -164,7 +181,7 @@ data migrated into Firestore.
   consolidated with the per-bar subdivision setting in the context menu.
 - Settings-modal tab for customizing the three grid line tints
   (`--line-strong`/`--line-dark`/`--line-light`) directly in the app.
-- Delete song, duplicate/"Save As", search in Load Song list.
+- Search in Load Song list.
 - Revision snapshots for autosave (e.g. `songs/{id}/revisions` on open and
   every ~10 min) so a bad edit can be rolled back.
 - Realtime sync (`onSnapshot`) and offline editing via Firestore's built-in

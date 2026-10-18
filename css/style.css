@@ -313,6 +313,14 @@ table.song-list th { text-align: left; padding: 10px; border-bottom: 2px solid #
 table.song-list td { padding: 10px; border-bottom: 1px solid #eee; }
 table.song-list tr:hover { background: #f9f9f9; cursor: pointer; }
 
+/* Duplicate / delete buttons in the Load Song list */
+table.song-list td.song-actions { width: 1%; white-space: nowrap; padding: 4px 6px; text-align: right; }
+.icon-btn { display: inline-flex; padding: 4px; border: 1px solid transparent; background: transparent; color: #888; }
+.icon-btn:hover { background: #eee; color: var(--accent); }
+.icon-btn.danger:hover { color: var(--danger); }
+.icon-btn .material-icons { font-size: 20px; }
+table.song-list tr.just-added td { background: #eaf4ff; }
+
 select.color-select { font-weight: bold; color: #333; }
 select.color-select option { font-weight: normal; }
 

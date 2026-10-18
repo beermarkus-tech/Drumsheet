@@ -18,7 +18,7 @@
   <div class="app-header">
     <div class="app-title">DRUMSHEET 🥁</div>
     <div class="app-header-right">
-      <div class="app-version">Build 11</div>
+      <div class="app-version">Build 12</div>
       <button id="reloadBtn" class="reload-btn" onclick="reloadApp()" title="Load the latest build"><span class="material-icons">refresh</span> Reload</button>
     </div>
   </div>
@@ -175,6 +175,7 @@
             <tr>
               <th onclick="sortSongList('band')">Band Name <span class="material-icons" style="font-size:12px">sort</span></th>
               <th onclick="sortSongList('title')">Song Title <span class="material-icons" style="font-size:12px">sort</span></th>
+              <th class="song-actions-head"></th>
             </tr>
           </thead>
           <tbody id="song-list-body"></tbody>

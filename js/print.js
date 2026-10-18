@@ -28,6 +28,45 @@ function loadScript(src) {
   });
 }
 
+// The built-in PDF font (Helvetica) only encodes Latin-1. Text containing
+// anything else (emoji, arrows, other scripts) is drawn as a small high-res
+// image at the same spot instead, rendered by the browser with the device's own
+// fonts and emoji.
+const PDF_SAFE_TEXT = /^[\x20-\x7E\xA0-\xFF]*$/;
+const PT_TO_MM = 25.4 / 72;
+const TEXT_IMG_PX_PER_MM = 16;                 // ≈ 400dpi
+const textCanvas = document.createElement('canvas');
+
+function canvasFont(font, sizePt) {
+  const px = sizePt * PT_TO_MM * TEXT_IMG_PX_PER_MM;
+  return `${font.includes('italic') ? 'italic ' : ''}${font.includes('bold') ? 'bold ' : ''}${px}px Helvetica, Arial, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+}
+
+// Width in mm of a string at a font/size, whichever way it will be drawn
+function measureText(pdf, str, font, sizePt) {
+  if (PDF_SAFE_TEXT.test(str)) {
+    pdf.setFont('helvetica', font); pdf.setFontSize(sizePt);
+    return pdf.getTextWidth(str);
+  }
+  const ctx = textCanvas.getContext('2d');
+  ctx.font = canvasFont(font, sizePt);
+  return ctx.measureText(str).width / TEXT_IMG_PX_PER_MM;
+}
+
+function textImage(str, font, sizePt, rgb, alpha = 1) {
+  const ctx = textCanvas.getContext('2d');
+  ctx.font = canvasFont(font, sizePt);
+  const px = sizePt * PT_TO_MM * TEXT_IMG_PX_PER_MM;
+  textCanvas.width = Math.ceil(ctx.measureText(str).width) + 4;
+  textCanvas.height = Math.ceil(px * 1.4);
+  ctx.font = canvasFont(font, sizePt);           // resizing resets the context
+  ctx.fillStyle = `rgb(${rgb.join(',')})`;
+  ctx.globalAlpha = alpha;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(str, 2, textCanvas.height / 2);
+  return { data: textCanvas.toDataURL('image/png'), w: textCanvas.width / TEXT_IMG_PX_PER_MM, h: textCanvas.height / TEXT_IMG_PX_PER_MM };
+}
+
 // Any CSS color (hex, rgb(), named) -> [r, g, b]
 const colorCtx = document.createElement('canvas').getContext('2d');
 function rgbOf(css, fallback = [0, 0, 0]) {
@@ -137,14 +176,27 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
   const addLine = (kind, x1, y1, x2, y2, rgb, w) => lines[kind].push({ x1, y1, x2, y2, rgb, w });
 
   const fillRect = (x, y, w, h, rgb) => { pdf.setFillColor(...rgb); pdf.rect(x, y, w, h, 'F'); };
-  const text = (str, x, y, opts, font, size, rgb) => texts.push(() => {
-    pdf.setFont('helvetica', font); pdf.setFontSize(size); pdf.setTextColor(...rgb);
-    pdf.text(str, x, y, { baseline: 'middle', ...opts });
-  });
-  const fitText = (str, maxW) => {          // clip like the editor (no wrapping)
-    if (pdf.getTextWidth(str) <= maxW) return str;
-    while (str.length && pdf.getTextWidth(str) > maxW) str = str.slice(0, -1);
-    return str;
+  const text = (str, x, y, opts, font, size, rgb, alpha = 1) => {
+    const lines = Array.isArray(str) ? str : [str];
+    if (lines.every(l => PDF_SAFE_TEXT.test(l))) {
+      texts.push(() => {
+        pdf.setFont('helvetica', font); pdf.setFontSize(size); pdf.setTextColor(...rgb);
+        pdf.text(str, x, y, { baseline: 'middle', ...opts });
+      });
+      return;
+    }
+    lines.forEach((line, k) => {
+      if (!line) return;
+      const img = textImage(line, font, size, rgb, alpha);
+      const lx = opts.align === 'center' ? x - img.w / 2 : opts.align === 'right' ? x - img.w : x;
+      const ly = y + k * size * PT_TO_MM * 1.15 - img.h / 2;    // jsPDF's default line height
+      texts.push(() => pdf.addImage(img.data, 'PNG', lx, ly, img.w, img.h));
+    });
+  };
+  const fitText = (str, maxW, font, size) => {    // clip like the editor (no wrapping)
+    const chars = [...str];                        // don't cut emoji in half
+    while (chars.length && measureText(pdf, chars.join(''), font, size) > maxW) chars.pop();
+    return chars.join('');
   };
 
   // --- Song header ---
@@ -209,14 +261,16 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
       const h = sp.struct * PDF.rowH;
       pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5);
       const maxLines = Math.max(1, Math.floor(h / 3.6));
-      const wrapped = pdf.splitTextToSize(row.struct.text, L.structW - 1.5).slice(0, maxLines);
+      const wrapped = PDF_SAFE_TEXT.test(row.struct.text)
+        ? pdf.splitTextToSize(row.struct.text, L.structW - 1.5).slice(0, maxLines)
+        : [fitText(row.struct.text, L.structW - 1.5, 'bold', 8.5)];
       text(wrapped, L.xStruct + L.structW / 2, y0 + h / 2 - (wrapped.length - 1) * 1.8, { align: 'center' }, 'bold', 8.5, rgbOf(row.struct.color));
       addLine('dark', L.xStruct, y0 + h, L.xLyrics, y0 + h, L.dark, PDF.thin);
     }
     if (sp.lyrics) {
       const h = sp.lyrics * PDF.rowH;
       pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8.5);
-      text(fitText(row.lyrics.text, L.lyricsW - 2.6), L.xLyrics + 1.3, y0 + h / 2, {}, 'italic', 8.5, rgbOf(row.lyrics.color));
+      text(fitText(row.lyrics.text, L.lyricsW - 2.6, 'italic', 8.5), L.xLyrics + 1.3, y0 + h / 2, {}, 'italic', 8.5, rgbOf(row.lyrics.color));
       addLine('dark', L.xLyrics, y0 + h, L.xBars, y0 + h, L.dark, PDF.thin);
     }
     if (sp.bars) {
@@ -245,10 +299,8 @@ function drawSheetPage(pdf, meta, rows, pageNo, pageCount, L) {
         }
         if (cell.sym) {
           let size = bar.split ? 7 : 8.5;
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(size);
-          while (size > 4 && pdf.getTextWidth(cell.sym) > cw - 0.6) { size -= 0.5; pdf.setFontSize(size); }
-          text(cell.sym, cx + cw / 2, ly + laneH / 2, { align: 'center' }, 'bold', size, bar.repeat ? [153, 153, 153] : [0, 0, 0]);
+          while (size > 4 && measureText(pdf, cell.sym, 'bold', size) > cw - 0.6) size -= 0.5;
+          text(cell.sym, cx + cw / 2, ly + laneH / 2, { align: 'center' }, 'bold', size, bar.repeat ? [153, 153, 153] : [0, 0, 0], bar.repeat ? 0.4 : 1);
         }
       });
     });

@@ -36,19 +36,80 @@ async function createNewSong() {
   }
 }
 
-async function loadSongList() {
+async function loadSongList(highlightId = null) {
   const tbody = document.getElementById('song-list-body');
-  tbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
   await window.firebaseReady;
   const list = await window.Firebase.listSongs();
   songListCache = list;
   tbody.innerHTML = '';
   list.forEach(song => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${escapeHtml(song.band)}</td><td>${escapeHtml(song.title)}</td>`;
+    tr.innerHTML = `<td>${escapeHtml(song.band)}</td><td>${escapeHtml(song.title)}</td>
+      <td class="song-actions">
+        <button class="icon-btn" data-action="duplicate" title="Duplicate"><span class="material-icons">content_copy</span></button>
+        <button class="icon-btn danger" data-action="delete" title="Delete"><span class="material-icons">delete</span></button>
+      </td>`;
+    if (song.id === highlightId) tr.classList.add('just-added');
     tr.onclick = () => loadSelectedSong(song.id);
+    tr.querySelector('[data-action="duplicate"]').onclick = (e) => { e.stopPropagation(); duplicateSongFromList(song); };
+    tr.querySelector('[data-action="delete"]').onclick = (e) => { e.stopPropagation(); deleteSongFromList(song); };
     tbody.appendChild(tr);
   });
+}
+
+async function duplicateSongFromList(song) {
+  await window.firebaseReady;
+  // Copy the latest state if it's the song being edited
+  if (song.id === currentSongMeta.id) await flushSave();
+
+  const titles = new Set(songListCache.map(s => s.title));
+  let title = `${song.title} (copy)`;
+  for (let n = 2; titles.has(title); n++) title = `${song.title} (copy ${n})`;
+
+  for (;;) {
+    title = prompt('Title for the copy:', title);
+    if (title === null) return;                     // cancelled
+    title = title.trim();
+    if (!title) { alert('Title is required'); continue; }
+    try {
+      if (await window.Firebase.isTitleTaken(title, null)) { alert('Another song already has this title.'); continue; }
+    } catch (e) { alert('Error: ' + e.message); return; }
+    break;
+  }
+
+  try {
+    const newId = await window.Firebase.duplicateSong(song.id, title);
+    await loadSongList(newId);
+  } catch (e) {
+    alert('Could not duplicate the song: ' + e.message);
+  }
+}
+
+async function deleteSongFromList(song) {
+  if (!confirm(`Delete "${song.title}" (${song.band || 'no band'})?\n\nThis cannot be undone.`)) return;
+  await window.firebaseReady;
+  if (song.id === currentSongMeta.id) await closeEditor();
+  try {
+    await window.Firebase.deleteSong(song.id);
+    try { if (localStorage.getItem(LAST_SONG_KEY) === song.id) localStorage.removeItem(LAST_SONG_KEY); } catch (e) {}
+  } catch (e) {
+    alert('Could not delete the song: ' + e.message);
+  }
+  await loadSongList();
+}
+
+// Back to the "no song open" state, without saving anything further
+async function closeEditor() {
+  clearTimeout(saveTimer); saveTimer = null;
+  clearTimeout(saveRetryTimer); saveRetryTimer = null;
+  saveAgain = false;
+  currentSongMeta = {};
+  while (saveInFlight) await saveInFlight;          // let a running write finish first
+  lastSavedJson = null;
+  clearSelection();
+  document.getElementById('rows-container').innerHTML = '';
+  ['editor-view', 'cellPopup', 'save-status', 'printBtn'].forEach(id => { document.getElementById(id).style.display = 'none'; });
 }
 
 function sortSongList(field) {

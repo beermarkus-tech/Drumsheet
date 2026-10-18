@@ -5,7 +5,7 @@
 // data is controlled by Firestore Security Rules, not by hiding this object.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, addDoc,
+  getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc,
   collection, getDocs, query, where, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 
@@ -81,7 +81,20 @@ window.firebaseReady = (async () => {
     return dupes.docs.some(d => d.id !== exceptId);
   }
 
+  async function deleteSong(id) {
+    await deleteDoc(doc(db, 'songs', id));
+    return true;
+  }
+
+  // Copy of a song (all fields) under a new title; returns the new id
+  async function duplicateSong(id, newTitle) {
+    const snap = await getDoc(doc(db, 'songs', id));
+    if (!snap.exists()) throw new Error('Song not found.');
+    const ref = await addDoc(SONGS_COL, { ...snap.data(), title: newTitle, updatedAt: serverTimestamp() });
+    return ref.id;
+  }
+
   window.Firebase = {
-    getConfig, saveConfig, listSongs, createSong, loadSong, saveSong, isTitleTaken
+    getConfig, saveConfig, listSongs, createSong, loadSong, saveSong, isTitleTaken, deleteSong, duplicateSong
   };
 })();
