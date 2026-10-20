@@ -49,6 +49,7 @@ window.onload = function() {
   // 2. Edit sidebar starts with nothing selected; edits autosave
   clearSelection();
   initCellSelection();
+  initLyricsPaste();
   initAutosave();
   // Rows added/removed change which rows a bar group covers
   new MutationObserver(() => refreshBarGroups()).observe(document.getElementById('rows-container'), { childList: true });

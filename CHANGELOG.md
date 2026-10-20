@@ -4,6 +4,16 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 24
+
+- **Paste multi-line lyrics.** Pasting text with line breaks into a lyrics
+  field spreads it over the rows: the first line goes into that field (at
+  the cursor), each further line into the next row's lyrics. Blank lines
+  are skipped; missing rows are added at the end with the same structure.
+  If following rows already have lyrics you're asked: OK replaces them,
+  Cancel inserts new rows instead. One Undo step; autosaved. Single-line
+  pastes work as before.
+
 ## Build 23
 
 - Removed the "Download PDF" button from the top row; the PDF is now

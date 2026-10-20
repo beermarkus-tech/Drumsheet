@@ -102,6 +102,53 @@ window.applyBarsModal = function () {
   closeModal('barsModal');
 };
 
+// --- MULTI-LINE PASTE INTO LYRICS ---
+// Pasting text with line breaks into a lyrics field spreads it over rows: the
+// first line goes into this field (at the cursor), each further line into the
+// lyrics of the next row. Blank lines are skipped. Missing rows are added at
+// the end (with this row's structure). If following rows already have lyrics,
+// the user chooses: replace them (OK) or insert new rows instead (Cancel).
+window.initLyricsPaste = function () {
+  document.getElementById('rows-container').addEventListener('paste', (e) => {
+    const input = e.target.closest && e.target.closest('.lyrics-input');
+    if (!input || !e.clipboardData) return;
+    const text = e.clipboardData.getData('text/plain');
+    if (!/[\r\n]/.test(text)) return;                    // single line: normal paste
+    e.preventDefault();
+
+    const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l !== '');
+    if (!lines.length) return;
+
+    const row = input.closest('.editor-row');
+    const rows = [...document.querySelectorAll('#rows-container .editor-row')];
+    const following = rows.slice(rows.indexOf(row) + 1, rows.indexOf(row) + lines.length);
+    const occupied = following.filter(r => r.querySelector('.lyrics-input').value.trim() !== '').length;
+    const insertRows = occupied > 0 && !confirm(
+      `${occupied} of the following ${following.length} row(s) already have lyrics.\n\n` +
+      `OK: replace their lyrics with the pasted lines\n` +
+      `Cancel: insert ${lines.length - 1} new row(s) for the pasted lines instead`);
+
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    input.value = input.value.slice(0, start) + lines[0] + input.value.slice(end);
+
+    const structure = row.querySelector('.struct-select').value;
+    let prev = row;
+    lines.slice(1).forEach((line, k) => {
+      const target = insertRows ? null : following[k];
+      if (target) {
+        target.querySelector('.lyrics-input').value = line;
+        prev = target;
+      } else {
+        window.addEditorRow({ structure, lyrics: line, gridData: '{}' }, prev);
+        prev = prev.nextElementSibling;
+      }
+    });
+    window.refreshBarGroups();
+    window.markUnsaved();
+  });
+};
+
 // --- ROW GENERATION ---
 window.addEditorRow = function (data = { structure: '', lyrics: '', gridData: '{}' }, afterElement = null) {
   const div = document.createElement('div');
