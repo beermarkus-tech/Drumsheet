@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drumsheet-shell-build-25';
+const CACHE_NAME = 'drumsheet-shell-build-26';
 
 const APP_SHELL = [
   './',

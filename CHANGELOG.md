@@ -4,6 +4,19 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 26
+
+- **Ctrl++** (also Ctrl+= and numpad +) inserts an empty row below the
+  current row; **Ctrl+Del** deletes the current row (not while typing in
+  Lyrics/Cell text, where Ctrl+Del deletes the next word). The cursor
+  stays in the same column. Both can be undone.
+- Sidebar symbols are compact tiles: just the symbol and its shortcut key;
+  the description is shown as tooltip (and stays editable in Configure).
+- **Bars is typed directly** ("4", "2x4"; also "2X4", "2*4", "2×4";
+  empty clears) — applied on Enter or when leaving the field, Esc reverts,
+  invalid input snaps back with a red flash. The Bars dialog is gone; the
+  effect is the same as before.
+
 ## Build 25
 
 Keyboard support (for a tablet/computer keyboard; best in the installed

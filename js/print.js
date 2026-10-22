@@ -120,8 +120,8 @@ function gatherSheet() {
     rows.push({
       struct: { text: structSelect.value, color: structSelect.style.color },
       lyrics: { text: lyricsInput.value, color: lyricsInput.style.color },
-      bars: row.querySelector('.bars-btn').dataset.bars,
-      barsMultiplier: row.querySelector('.bars-btn').dataset.mult,
+      bars: row.querySelector('.bars-input').dataset.bars,
+      barsMultiplier: row.querySelector('.bars-input').dataset.mult,
       bar1: barModel(row.querySelector('#bar-1')),
       bar2: barModel(row.querySelector('#bar-2'))
     });

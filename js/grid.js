@@ -8,7 +8,7 @@ let clipboardBar = null; // Holds the copied bar data
 // Only the first row carries the value; covered rows are disabled in the editor
 // (no merged box on screen). The PDF draws the group as one merged box.
 // An optional multiplier (2x-6x) is display-only, e.g. "2x4"; grouping always
-// uses the bar count. Both are picked in #barsModal.
+// uses the bar count. Typed directly into the row's Bars field, e.g. "4" or "2x4".
 
 function barsLabel(bars, mult) {
   if (!bars) return '';
@@ -44,62 +44,63 @@ function computeBarGroups(rows) {
   return out;
 }
 
-// The Bars cell is a button holding data-bars / data-mult; it opens #barsModal
-function setBarsButton(btn, bars, mult) {
-  btn.dataset.bars = bars || '';
-  btn.dataset.mult = bars ? (mult || '') : '';
-  const label = barsLabel(btn.dataset.bars, btn.dataset.mult);
-  if (btn.textContent !== (label || '-')) btn.textContent = label || '-';
+// The Bars field is a text input holding the committed value in data-bars /
+// data-mult; what's typed is applied on Enter or when leaving the field.
+function setBarsInput(input, bars, mult) {
+  input.dataset.bars = bars || '';
+  input.dataset.mult = bars ? (mult || '') : '';
+  const label = barsLabel(input.dataset.bars, input.dataset.mult);
+  if (input.value !== label) input.value = label;
 }
 
-// Also marks rows that start a new section (thick line on top, like the PDF)
+// "4", "2x4" (also X, *, ×, spaces) -> { bars, mult }; "" or "-" -> empty;
+// anything else -> null. Bars 2/4/6/8, multiplier 2-6.
+function parseBarsText(text) {
+  const t = String(text).trim().toLowerCase().replace(/\s+/g, '');
+  if (t === '' || t === '-') return { bars: '', mult: '' };
+  const m = /^(?:([2-6])[x×*])?([2468])$/.exec(t);
+  return m ? { bars: m[2], mult: m[1] || '' } : null;
+}
+
+window.commitBarsInput = function (input) {
+  const parsed = parseBarsText(input.value);
+  if (!parsed) {
+      setBarsInput(input, input.dataset.bars, input.dataset.mult);     // revert
+      input.classList.add('invalid');
+      setTimeout(() => input.classList.remove('invalid'), 1200);
+      return;
+  }
+  if (parsed.bars === input.dataset.bars && parsed.mult === input.dataset.mult) {
+      setBarsInput(input, parsed.bars, parsed.mult);                   // normalize "2X4" -> "2x4"
+      return;
+  }
+  setBarsInput(input, parsed.bars, parsed.mult);
+  window.refreshBarGroups();
+  window.markUnsaved();
+};
+
+window.barsInputKey = function (e, input) {
+  if (e.key === 'Enter') { e.preventDefault(); window.commitBarsInput(input); input.select(); }
+  else if (e.key === 'Escape') { e.preventDefault(); setBarsInput(input, input.dataset.bars, input.dataset.mult); input.select(); }
+};
+
 window.refreshBarGroups = function () {
   const rows = [...document.querySelectorAll('#rows-container .editor-row')];
   const structs = rows.map(r => r.querySelector('.struct-select').value);
   rows.forEach((row, i) => row.classList.toggle('section-start', isSectionStart(structs, i)));
   const groups = computeBarGroups(rows.map((r, i) => ({
-    bars: r.querySelector('.bars-btn').dataset.bars,
+    bars: r.querySelector('.bars-input').dataset.bars,
     struct: structs[i]
   })));
   let cleared = false;
   rows.forEach((row, i) => {
-    const btn = row.querySelector('.bars-btn');
+    const input = row.querySelector('.bars-input');
     const covered = groups[i].covered;
-    if (covered && btn.dataset.bars) { setBarsButton(btn, '', ''); cleared = true; }
-    if (btn.disabled !== covered) btn.disabled = covered;
+    if (covered && input.dataset.bars) { setBarsInput(input, '', ''); cleared = true; }
+    if (input.disabled !== covered) input.disabled = covered;
     row.classList.toggle('bars-covered', covered);
   });
   if (cleared) window.markUnsaved();
-};
-
-// --- BARS MODAL ---
-let barsModalTarget = null;
-
-window.openBarsModal = function (btn) {
-  barsModalTarget = btn;
-  document.getElementById('bars-count').value = btn.dataset.bars || '';
-  document.getElementById('bars-mult').value = btn.dataset.mult || '';
-  updateBarsModalPreview();
-  document.getElementById('barsModal').style.display = 'flex';
-};
-
-window.updateBarsModalPreview = function () {
-  const bars = document.getElementById('bars-count').value;
-  const mult = document.getElementById('bars-mult');
-  mult.disabled = !bars;                       // a multiplier needs a bar count
-  const label = barsLabel(bars, mult.value);
-  document.getElementById('bars-preview').textContent = label || '(empty)';
-};
-
-window.applyBarsModal = function () {
-  if (barsModalTarget && barsModalTarget.isConnected) {
-    const bars = document.getElementById('bars-count').value;
-    setBarsButton(barsModalTarget, bars, document.getElementById('bars-mult').value);
-    window.refreshBarGroups();
-    window.markUnsaved();
-  }
-  barsModalTarget = null;
-  closeModal('barsModal');
 };
 
 // --- MULTI-LINE PASTE INTO LYRICS ---
@@ -184,8 +185,11 @@ window.addEditorRow = function (data = { structure: '', lyrics: '', gridData: '{
     </div>
 
     <div class="col-bars">
-        <button type="button" class="bars-btn" title="Bars in this group (starts here)" onclick="openBarsModal(this)"
-          data-bars="${escapeHtml(data.bars ? data.bars : '')}" data-mult="${escapeHtml(data.bars && data.barsMultiplier ? data.barsMultiplier : '')}">${escapeHtml(barsLabel(data.bars, data.barsMultiplier) || '-')}</button>
+        <input type="text" class="bars-input" autocomplete="off" spellcheck="false" placeholder="-"
+          title="Bars in this group, starting here: 2, 4, 6 or 8, optionally with a multiplier, e.g. 2x4"
+          data-bars="${escapeHtml(data.bars ? data.bars : '')}" data-mult="${escapeHtml(data.bars && data.barsMultiplier ? data.barsMultiplier : '')}"
+          value="${escapeHtml(barsLabel(data.bars, data.barsMultiplier))}"
+          onchange="commitBarsInput(this)" onkeydown="barsInputKey(event, this)">
     </div>
 
     <div class="col-grid">
@@ -581,7 +585,7 @@ function enterGrid(row) {
   cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
-const ROW_FIELDS = ['.struct-select', '.lyrics-input', '.bars-btn', 'GRID'];
+const ROW_FIELDS = ['.struct-select', '.lyrics-input', '.bars-input', 'GRID'];
 
 function rowFieldIndex(el) {
   return el && el.matches ? ROW_FIELDS.findIndex(f => f !== 'GRID' && el.matches(f)) : -1;
@@ -624,6 +628,42 @@ window.verticalFieldMove = function (el, down) {
   for (let r = rows.indexOf(el.closest('.editor-row')) + (down ? 1 : -1); r >= 0 && r < rows.length; r += down ? 1 : -1) {
       if (focusRowField(rows[r], idx)) return;
   }
+};
+
+// The row the keyboard is on: focused field's row, else the grid cursor's
+function currentRow() {
+  const el = document.activeElement;
+  const row = el && el !== document.body && el.closest && el.closest('#rows-container .editor-row');
+  if (row) return row;
+  return selFocus && selFocus.row.isConnected ? selFocus.row : null;
+}
+function currentColumn() {
+  const idx = rowFieldIndex(document.activeElement);
+  return idx >= 0 ? idx : 3;
+}
+
+// CTRL + "+": empty row below the current one; keep the cursor's column
+window.insertRowBelowCurrent = function () {
+  const row = currentRow();
+  if (!row) return false;
+  const col = currentColumn();
+  window.addEditorRow(undefined, row);
+  focusRowField(row.nextElementSibling, col) || focusRowField(row.nextElementSibling, 3);
+  return true;
+};
+
+// CTRL + DELETE: delete the current row; the cursor moves to the next row
+// (or the previous one at the end), same column
+window.deleteCurrentRow = function () {
+  const row = currentRow();
+  if (!row) return false;
+  const col = currentColumn();
+  const next = row.nextElementSibling || row.previousElementSibling;
+  if (document.activeElement && row.contains(document.activeElement)) document.activeElement.blur();
+  row.remove();
+  syncSelection();
+  if (next) focusRowField(next, col) || focusRowField(next, 3);
+  return true;
 };
 
 window.gridHasCursor = function () { return !!(selAnchor && selAnchor.row.isConnected); };
@@ -669,8 +709,10 @@ function populateSidebarLists() {
           const row = document.createElement('div');
           row.className = 'symbol-row';
           row.onclick = () => window.selectSymbol(s);
-          row.innerHTML = `<div class="symbol-preview" style="background-color:${escapeHtml(s.color)}">${escapeHtml(s.symbol)}</div><div class="symbol-meaning">${escapeHtml(s.meaning)}</div>` +
-            (s.shortcut ? `<div class="symbol-key" title="Keyboard shortcut">${escapeHtml(shortcutLabel(s.shortcut))}</div>` : '');
+          // Compact tile: symbol + its key; the description is the tooltip
+          row.title = s.meaning || '';
+          row.innerHTML = `<div class="symbol-preview" style="background-color:${escapeHtml(s.color)}">${escapeHtml(s.symbol)}</div>` +
+            (s.shortcut ? `<div class="symbol-key">${escapeHtml(shortcutLabel(s.shortcut))}</div>` : '');
           symContainer.appendChild(row);
       });
   }

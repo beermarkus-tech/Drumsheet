@@ -171,14 +171,22 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
+  // CTRL + "+" = empty row below the current one (also Ctrl+= / numpad +; this
+  // replaces the browser's zoom-in here). CTRL + DELETE = delete the current
+  // row (not while typing lyrics/cell text, where it deletes the next word).
+  if (ctrl && !e.altKey && currentSongMeta.id) {
+    const plus = e.key === '+' || e.key === '=' || e.code === 'NumpadAdd';
+    const typing = el && el.matches && el.matches('.lyrics-input, #popup-comment');
+    if (plus && insertRowBelowCurrent()) { e.preventDefault(); return; }
+    if (e.key === 'Delete' && !typing && deleteCurrentRow()) { e.preventDefault(); return; }
+  }
+
   // Cell text field: ESC goes back to the grid (ENTER applies, see index.html)
   if (el && el.id === 'popup-comment' && e.key === 'Escape') { el.blur(); return; }
 
   // GUARD: typing in a field or using a dropdown -> the browser's keys apply
   // (incl. its own undo and copy/paste in text fields)
   if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
-  // A focused Bars button keeps ENTER/SPACE for opening its dialog
-  if (rowField) return;
 
   // CTRL + Z = Undo, CTRL + Y / CTRL + SHIFT + Z = Redo
   if (ctrl && e.key.toLowerCase() === 'z') {
