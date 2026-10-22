@@ -17,7 +17,7 @@ Google Sheet (see `legacy-gas/` for the original source).
 - Songs autosave (`js/data.js`, "AUTOSAVE"): any edit schedules a save
   300ms after the last change; the whole song (meta + rows) is written in one
   update, and only if it differs from what was last saved. There is no
-  manual save button (Ctrl+S forces an immediate save).
+  manual save button.
 - `js/print.js` draws the A4 PDF as vector graphics with the bundled
   `js/vendor/jspdf.umd.min.js` (jsPDF, MIT licensed). The preview renders
   that same PDF with `js/vendor/pdf.min.js` (pdf.js, Apache-2.0).

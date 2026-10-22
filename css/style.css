@@ -369,6 +369,12 @@ table.song-list tr.just-added td { background: #eaf4ff; }
 .preview-pages canvas { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.25); max-width: 100%; }
 .preview-status { color: #555; padding: 30px; }
 
+/* Symbol keyboard shortcuts */
+.config-row input.shortcut-input { flex: 0 0 70px; max-width: 70px; text-align: center; cursor: pointer; caret-color: transparent; }
+.config-row input.shortcut-input:focus { border-color: var(--accent); background: #eaf4ff; }
+.shortcut-msg { font-size: 0.85rem; color: #555; margin-bottom: 10px; min-height: 1.2em; }
+.symbol-key { margin-left: auto; font-size: 0.75rem; color: #666; border: 1px solid #ccc; border-radius: 3px; padding: 0 4px; white-space: nowrap; }
+
 select.color-select { font-weight: bold; color: #333; }
 select.color-select option { font-weight: normal; }
 

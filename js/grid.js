@@ -474,6 +474,7 @@ function syncSelection() {
   selectedCells = resolveSelection();
   if (selectedCells.length === 0) { clearSelection(); return; }
   selectedCells.forEach(c => c.classList.add('cell-selected'));
+  lastGridPos = { barNum: selFocus.barNum, aux: selFocus.aux, idx: selFocus.idx };
 
   // The anchor cell drives single-bar actions (copy, paste, clear bar)
   const anchorBar = selAnchor.row.querySelector(`#bar-${selAnchor.barNum}`);
@@ -509,6 +510,123 @@ function syncSelection() {
 
   document.getElementById('cellPopup').classList.remove('no-selection');
 }
+
+// --- KEYBOARD NAVIGATION ---
+// Grid: the arrow keys move the "cursor" (the selection's focus position) cell
+// by cell; Shift+arrows extend the selection instead. Left/Right run through
+// the row's bar 1 then bar 2 and stop at the row's ends; Up/Down keep the beat,
+// passing through both lanes of a split bar. A merged cell counts as one.
+// Rows: Tab / Shift+Tab go Structure -> Lyrics -> Bars -> Grid -> next row;
+// Up/Down in Structure, Lyrics and Bars go to the same column in the row
+// above/below. Tab re-enters the grid at the beat used last.
+let lastGridPos = null;            // { barNum, aux, idx }
+
+// The cell covering a position (a bar without the requested lane: main lane)
+function cellAt(pos) {
+  const bar = pos.row.querySelector(`#bar-${pos.barNum}`);
+  const slots = 16 / (parseInt(bar.getAttribute('data-subd')) || 8);
+  return laneCells(bar, pos.aux).find(c => {
+      const start = parseInt(c.id.split('_c')[1]);
+      return start <= pos.idx && pos.idx < start + slots;
+  });
+}
+
+function editorRows() {
+  return [...document.querySelectorAll('#rows-container .editor-row')];
+}
+
+window.moveGridCursor = function (key, extend) {
+  if (!selFocus || !selFocus.row.isConnected) return;
+  const cur = cellAt(selFocus);
+  if (!cur) return;
+  const p = cellPos(cur);
+  let target = null, keepBeat = false;
+
+  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      const seq = [1, 2].flatMap(b => laneCells(p.row.querySelector(`#bar-${b}`), p.aux));
+      target = seq[seq.indexOf(cur) + (key === 'ArrowRight' ? 1 : -1)] || null;
+  } else {
+      const down = key === 'ArrowDown';
+      const split = p.row.querySelector(`#bar-${p.barNum}`).getAttribute('data-split') === 'true';
+      keepBeat = true;
+      if (split && down === !p.aux) {
+          target = cellAt({ ...p, aux: down, idx: selFocus.idx });     // other lane, same bar
+      } else {
+          const rows = editorRows();
+          const row = rows[rows.indexOf(p.row) + (down ? 1 : -1)];
+          if (row) {
+              const rowSplit = row.querySelector(`#bar-${p.barNum}`).getAttribute('data-split') === 'true';
+              target = cellAt({ row, barNum: p.barNum, aux: rowSplit && !down, idx: selFocus.idx });
+          }
+      }
+  }
+  if (!target) return;                               // at an edge: stay
+
+  const np = cellPos(target);
+  if (keepBeat) np.idx = selFocus.idx;               // keep the column through merged cells
+  if (extend) selFocus = np;
+  else { selAnchor = { ...np }; selFocus = { ...np }; }
+  syncSelection();
+  target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+};
+
+function enterGrid(row) {
+  const pos = { row, ...(lastGridPos || { barNum: 1, aux: false, idx: 1 }) };
+  const cell = cellAt(pos);
+  if (!cell) return;
+  if (document.activeElement) document.activeElement.blur();
+  selAnchor = { ...pos, aux: cellPos(cell).aux };
+  selFocus = { ...selAnchor };
+  syncSelection();
+  cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+const ROW_FIELDS = ['.struct-select', '.lyrics-input', '.bars-btn', 'GRID'];
+
+function rowFieldIndex(el) {
+  return el && el.matches ? ROW_FIELDS.findIndex(f => f !== 'GRID' && el.matches(f)) : -1;
+}
+
+// Focus one column of a row; false if it can't take focus (e.g. a covered Bars cell)
+function focusRowField(row, idx) {
+  if (ROW_FIELDS[idx] === 'GRID') { enterGrid(row); return true; }
+  const field = row.querySelector(ROW_FIELDS[idx]);
+  if (!field || field.disabled) return false;
+  field.focus();
+  if (field.matches('input')) field.select();
+  field.scrollIntoView({ block: 'nearest' });
+  return true;
+}
+
+// Returns false when there's nothing to navigate from (let the browser handle Tab)
+window.tabNavigate = function (back) {
+  const el = document.activeElement;
+  const rows = editorRows();
+  let row, idx = rowFieldIndex(el);
+  if (idx >= 0 && el.closest('.editor-row')) row = el.closest('.editor-row');
+  else if (selFocus && selFocus.row.isConnected) { row = selFocus.row; idx = 3; }
+  else return false;
+
+  let r = rows.indexOf(row);
+  for (let step = 0; step < 4 * rows.length; step++) {
+      idx += back ? -1 : 1;
+      if (idx > 3) { idx = 0; r++; }
+      if (idx < 0) { idx = 3; r--; }
+      if (r < 0 || r >= rows.length) return true;     // first/last row: stay
+      if (focusRowField(rows[r], idx)) return true;
+  }
+  return true;
+};
+
+window.verticalFieldMove = function (el, down) {
+  const idx = rowFieldIndex(el);
+  const rows = editorRows();
+  for (let r = rows.indexOf(el.closest('.editor-row')) + (down ? 1 : -1); r >= 0 && r < rows.length; r += down ? 1 : -1) {
+      if (focusRowField(rows[r], idx)) return;
+  }
+};
+
+window.gridHasCursor = function () { return !!(selAnchor && selAnchor.row.isConnected); };
 
 // Long-press on a cell extends the selection to it (tablets have no Shift)
 window.initCellSelection = function () {
@@ -551,7 +669,8 @@ function populateSidebarLists() {
           const row = document.createElement('div');
           row.className = 'symbol-row';
           row.onclick = () => window.selectSymbol(s);
-          row.innerHTML = `<div class="symbol-preview" style="background-color:${escapeHtml(s.color)}">${escapeHtml(s.symbol)}</div><div class="symbol-meaning">${escapeHtml(s.meaning)}</div>`;
+          row.innerHTML = `<div class="symbol-preview" style="background-color:${escapeHtml(s.color)}">${escapeHtml(s.symbol)}</div><div class="symbol-meaning">${escapeHtml(s.meaning)}</div>` +
+            (s.shortcut ? `<div class="symbol-key" title="Keyboard shortcut">${escapeHtml(shortcutLabel(s.shortcut))}</div>` : '');
           symContainer.appendChild(row);
       });
   }
@@ -706,6 +825,13 @@ function _pasteLogic(isGhost) {
   window.closePopup();
   window.markUnsaved();
 }
+
+// Removes only the text; the background color stays
+window.emptyCell = function () {
+  if (!selectedCells.length) return;
+  selectedCells.forEach(cell => { cell.innerText = ''; });
+  window.closePopup();
+};
 
 window.clearCell = function () {
   if (!selectedCells.length) return;

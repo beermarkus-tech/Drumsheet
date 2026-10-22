@@ -4,6 +4,34 @@ Build numbers shown in the app header (`Build NN`), counting up after each
 completed unit of work. Each build is pushed to the working branch so
 GitHub Pages redeploys and it's directly testable as the installed PWA.
 
+## Build 25
+
+Keyboard support (for a tablet/computer keyboard; best in the installed
+app, since a normal browser tab keeps Ctrl+1–9 for switching tabs).
+- **Grid:** arrow keys move cell by cell (a merged cell is one cell; ←/→
+  run bar 1 → bar 2 and stop at the row's ends; ↑/↓ keep the beat and pass
+  through both lanes of a split bar). **Shift+arrows** extend the
+  selection.
+- **Tab / Shift+Tab:** Structure → Lyrics → Bars → Grid → next row (covered
+  Bars cells are skipped; the grid is entered at the beat used last).
+  **↑/↓** in Structure, Lyrics and Bars move to the same column in the row
+  above/below (in Structure, pick a value by typing its first letter or
+  Alt+↓).
+- **Enter** = type into "Cell text" (Enter applies to the selection and
+  returns to the grid, Esc returns without applying). **Delete/Backspace**
+  = Empty Cell, **Shift+Delete** = Clear Cell.
+- **Ctrl+1/2/4/8/6** = subdivision Full, 1/2, 1/4, 1/8, 1/16 and
+  **Ctrl+9** = Split/Merge, for all selected bars.
+- **Own shortcuts per symbol** in Configure → Symbols ("Key" field: click,
+  press a key; letters/digits/punctuation, Shift allowed; Backspace
+  removes). A key already used by another symbol is refused with a message.
+  They work only when a grid cell is selected (not while typing), apply to
+  all selected cells, and are shown next to the symbols in the sidebar.
+- New **Empty Cell** button: removes the text, keeps the background color.
+- **Ctrl+S** no longer saves (autosave does); it's simply ignored. The
+  internal "save now" used when switching/duplicating/deleting songs and on
+  Reload stays.
+
 ## Build 24
 
 - **Paste multi-line lyrics.** Pasting text with line breaks into a lyrics

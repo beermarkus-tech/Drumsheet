@@ -124,38 +124,84 @@ async function reloadApp() {
   location.reload();
 }
 
-// --- KEYBOARD SHORTCUTS ---
+// --- KEYBOARD ---
+// Symbol shortcuts are stored per symbol in the configuration as e.g. "t",
+// "shift+t", "7" or "!": a printable key, Shift allowed (for letters it's kept
+// as a flag; for digits/punctuation the typed character already reflects it).
+// Ctrl/Alt combinations and non-printable keys can't be used (browser and app
+// shortcuts, navigation, editing).
+function shortcutFromEvent(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) return null;
+  const k = e.key;
+  if (!k || [...k].length !== 1 || k === ' ') return null;
+  if (/\p{L}/u.test(k)) return (e.shiftKey ? 'shift+' : '') + k.toLowerCase();
+  return k;
+}
+
+function shortcutLabel(sc) {
+  return sc.startsWith('shift+') ? 'Shift+' + sc.slice(6).toUpperCase() : sc;
+}
+
+const SUBDIVISION_KEYS = { '1': 1, '2': 2, '4': 4, '8': 8, '6': 16 };
+
+function isModalOpen() {
+  return [...document.querySelectorAll('.modal-overlay')].some(m => m.style.display === 'flex');
+}
+
 document.addEventListener('keydown', function(e) {
-  // CTRL + S = save now (works everywhere, also while typing; stops the
-  // browser's "Save page" dialog)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-    e.preventDefault();
-    flushSave();
+  if (e.defaultPrevented) return;                     // already handled by a field
+  if (isModalOpen()) return;                          // dialogs handle their own keys
+  const el = document.activeElement;
+  const ctrl = e.ctrlKey || e.metaKey;
+  const rowField = el && el !== document.body && el.closest && el.closest('#rows-container .editor-row');
+
+  // CTRL + S: nothing to do (autosave), just keep the browser's "Save page" away
+  if (ctrl && e.key.toLowerCase() === 's') { e.preventDefault(); return; }
+
+  // TAB / SHIFT+TAB: Structure -> Lyrics -> Bars -> Grid -> next row
+  if (e.key === 'Tab' && !ctrl && !e.altKey && currentSongMeta.id) {
+    if (tabNavigate(e.shiftKey)) e.preventDefault();
     return;
   }
 
-  // 1. GUARD CLAUSE: Do nothing if typing in an input or textarea
-  // This allows normal copy/paste of text in Lyrics and Popup Comment
-  const activeTag = document.activeElement.tagName.toLowerCase();
-  if (activeTag === 'input' || activeTag === 'textarea') return;
+  // UP / DOWN in Structure, Lyrics, Bars: same column in the row above/below
+  if (rowField && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.altKey && !ctrl) {
+    e.preventDefault();
+    verticalFieldMove(el, e.key === 'ArrowDown');
+    return;
+  }
 
-  // 2. SHORTCUTS (Only active when NOT typing; in text fields the browser's
-  // own undo applies)
+  // Cell text field: ESC goes back to the grid (ENTER applies, see index.html)
+  if (el && el.id === 'popup-comment' && e.key === 'Escape') { el.blur(); return; }
+
+  // GUARD: typing in a field or using a dropdown -> the browser's keys apply
+  // (incl. its own undo and copy/paste in text fields)
+  if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+  // A focused Bars button keeps ENTER/SPACE for opening its dialog
+  if (rowField) return;
 
   // CTRL + Z = Undo, CTRL + Y / CTRL + SHIFT + Z = Redo
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+  if (ctrl && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     if (e.shiftKey) redoEdit(); else undoEdit();
     return;
   }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+  if (ctrl && e.key.toLowerCase() === 'y') {
     e.preventDefault();
     redoEdit();
     return;
   }
 
+  // CTRL + 1/2/4/8/6 = subdivision Full, 1/2, 1/4, 1/8, 1/16; CTRL + 9 = Split/Merge
+  // (physical digit keys, so the keyboard layout doesn't matter)
+  if (ctrl && !e.altKey && /^Digit\d$/.test(e.code) && activeCell) {
+    const d = e.code.slice(5);
+    if (d === '9') { e.preventDefault(); toggleSplit(); return; }
+    if (SUBDIVISION_KEYS[d]) { e.preventDefault(); changeSubdivision(SUBDIVISION_KEYS[d]); return; }
+  }
+
   // CTRL + C = Copy Bar
-  if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+  if (ctrl && e.key === 'c') {
     if (activeCell) {
       copyBar();
       // Visual feedback
@@ -166,7 +212,7 @@ document.addEventListener('keydown', function(e) {
 
   // CTRL + SHIFT + V = Ghost Paste (Repeat)
   // (Check Shift first because 'V' matches both v and V)
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+  if (ctrl && e.shiftKey && e.key.toLowerCase() === 'v') {
     e.preventDefault(); // Stop browser from doing anything weird
     if (activeCell && clipboardBar) {
       pasteRepeat();
@@ -175,13 +221,42 @@ document.addEventListener('keydown', function(e) {
   }
 
   // CTRL + V = Paste Bar (Standard)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-    // We do NOT preventDefault here generally, but since we have the Guard Clause above,
-    // we know we are NOT in an input. So it is safe to hijack it for the Grid.
+  if (ctrl && e.key === 'v') {
+    // Not in a text field (guard above), so it's safe to hijack it for the grid
     e.preventDefault();
     if (activeCell && clipboardBar) {
       pasteBar();
     }
+  }
+
+  // --- Grid cursor keys (a cell is selected, no modifier except Shift) ---
+  if (!activeCell || ctrl || e.altKey) return;
+
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+    e.preventDefault();
+    moveGridCursor(e.key, e.shiftKey);              // SHIFT + arrows extend the selection
+    return;
+  }
+  // DELETE / BACKSPACE = Empty Cell (text only), SHIFT + DELETE = Clear Cell
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    if (e.shiftKey) clearCell(); else emptyCell();
+    return;
+  }
+  // ENTER = type into the "Cell text" field
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const field = document.getElementById('popup-comment');
+    field.focus();
+    field.select();
+    return;
+  }
+  // Symbol shortcuts from the configuration
+  const sc = shortcutFromEvent(e);
+  const symbol = sc && (configData.symbols || []).find(s => s.shortcut === sc);
+  if (symbol) {
+    e.preventDefault();
+    selectSymbol(symbol);
   }
 });
 
@@ -286,6 +361,8 @@ function renderSymbolRows() {
     div.innerHTML = `
       <input type="text" placeholder="Sym" value="${escapeHtml(s.symbol)}" style="max-width:50px" onchange="updateSymbol(${index}, 'symbol', this.value)">
       <input type="text" placeholder="Meaning" value="${escapeHtml(s.meaning)}" onchange="updateSymbol(${index}, 'meaning', this.value)">
+      <input type="text" class="shortcut-input" readonly placeholder="Key" value="${escapeHtml(s.shortcut ? shortcutLabel(s.shortcut) : '')}"
+        title="Keyboard shortcut: click here, then press a key (Shift allowed). Backspace removes it." onkeydown="recordShortcut(event, ${index})">
       <select class="color-select" onchange="updateSymbol(${index}, 'color', this.value)" style="background-color:${escapeHtml(s.color)}">
          ${generateColorOptions(SYMBOL_COLORS, s.color)}
       </select>
@@ -317,6 +394,30 @@ function moveStructure(idx, dir) { if (moveInList(configData.structures, idx, di
 function addSymbolRow() { configData.symbols.push({ symbol: '', meaning: '', color: '#FFFFFF' }); renderSymbolRows(); populateSidebarLists(); }
 function updateSymbol(idx, f, v) { configData.symbols[idx][f] = v; renderSymbolRows(); populateSidebarLists(); }
 function deleteSymbol(idx) { configData.symbols.splice(idx, 1); renderSymbolRows(); populateSidebarLists(); }
+// Shortcut field in a symbol row: the next key pressed becomes the shortcut,
+// unless another symbol already uses it
+function recordShortcut(e, idx) {
+  if (e.key === 'Tab') return;
+  e.preventDefault();
+  const msg = document.getElementById('shortcut-msg');
+  if (e.key === 'Escape') { e.target.blur(); return; }
+  if (['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'CapsLock'].includes(e.key)) return;   // wait for the real key
+  const symbol = configData.symbols[idx];
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    delete symbol.shortcut;
+    msg.textContent = `Shortcut removed from ${symbol.symbol}.`;
+  } else {
+    const sc = shortcutFromEvent(e);
+    if (!sc) { msg.textContent = 'Use a letter, digit or punctuation key, optionally with Shift (no Ctrl/Alt, no Space).'; return; }
+    const other = configData.symbols.find((s, i) => i !== idx && s.shortcut === sc);
+    if (other) { msg.textContent = `${shortcutLabel(sc)} is already used by ${other.symbol} (${other.meaning || 'no meaning'}).`; return; }
+    symbol.shortcut = sc;
+    msg.textContent = `${shortcutLabel(sc)} → ${symbol.symbol}`;
+  }
+  renderSymbolRows();
+  populateSidebarLists();
+}
+
 function moveSymbol(idx, dir) { if (moveInList(configData.symbols, idx, dir)) { renderSymbolRows(); populateSidebarLists(); } }
 
 function generateColorOptions(palette, selectedColor) {

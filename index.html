@@ -18,7 +18,7 @@
   <div class="app-header">
     <div class="app-title">DRUMSHEET 🥁</div>
     <div class="app-header-right">
-      <div class="app-version">Build 24</div>
+      <div class="app-version">Build 25</div>
       <button id="reloadBtn" class="reload-btn" onclick="reloadApp()" title="Load the latest build"><span class="material-icons">refresh</span> Reload</button>
     </div>
   </div>
@@ -95,7 +95,7 @@
         </div>
 
         <div class="popup-section-title">Cell Text</div>
-        <input id="popup-comment" class="cell-comment-input" placeholder="Type & Enter..." onkeydown="if(event.key === 'Enter') applyText()">
+        <input id="popup-comment" class="cell-comment-input" placeholder="Type & Enter..." onkeydown="if(event.key === 'Enter') { event.preventDefault(); applyText(); this.blur(); }">
 
         <div class="popup-section-title" style="margin-top:10px;">Insert Symbol / Color</div>
         <div class="popup-content-row" id="popup-split-wrapper">
@@ -124,7 +124,8 @@
         </div>
 
         <div class="popup-actions">
-          <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearCell()">Clear Cell</button>
+          <button class="popup-btn" title="Remove the text, keep the color (Delete)" onclick="emptyCell()">Empty Cell</button>
+          <button class="popup-btn" style="color:red; font-weight:bold;" title="Remove text and color (Shift+Delete)" onclick="clearCell()">Clear Cell</button>
           <button class="popup-btn" style="color:red; font-weight:bold;" onclick="clearBar()">Clear Bar</button>
         </div>
       </div>
@@ -147,6 +148,7 @@
         </div>
 
         <div id="tab-sym" class="tab-content">
+          <div id="shortcut-msg" class="shortcut-msg">Keyboard shortcut: click a "Key" field and press a key (Shift allowed); Backspace removes it.</div>
           <div id="symbol-list"></div>
           <button onclick="addSymbolRow()" style="margin-top:10px">+ Add Symbol</button>
         </div>
